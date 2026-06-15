@@ -1,0 +1,28 @@
+# Core ML
+torch>=2.1.0
+transformers>=4.40.0
+datasets>=2.18.0
+accelerate>=0.27.0
+evaluate>=0.4.1
+tokenizers>=0.15.0
+
+# Fine-tuning / quantization
+bitsandbytes>=0.43.0
+
+# Data handling
+pandas>=2.1.0
+numpy>=1.26.0
+scikit-learn>=1.4.0
+
+# SRT parsing
+pysrt>=1.1.2
+
+# Plots
+matplotlib>=3.8.0
+seaborn>=0.13.0
+
+# Reproducibility / utilities
+huggingface-hub>=0.22.0
+sentencepiece>=0.2.0
+protobuf>=4.25.0
+safetensors>=0.4.2

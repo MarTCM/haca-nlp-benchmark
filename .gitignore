@@ -1,0 +1,13 @@
+data/raw/
+checkpoints/
+__pycache__/
+*.pyc
+*.pyo
+.env
+*.egg-info/
+dist/
+build/
+.ipynb_checkpoints/
+*.pt
+*.bin
+*.safetensors

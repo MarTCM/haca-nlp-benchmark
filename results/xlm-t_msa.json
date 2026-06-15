@@ -1,0 +1,59 @@
+{
+  "model": "xlm-t",
+  "lang": "msa",
+  "n": 1000,
+  "macro_f1": 0.8125,
+  "latency_ms_per_utt": 168.404,
+  "peak_vram_mb": 0.0,
+  "n_params": 278045955,
+  "classes_evaluated": [
+    "neg",
+    "pos"
+  ],
+  "classification_report": {
+    "neg": {
+      "precision": 0.9478584729981379,
+      "recall": 0.7496318114874816,
+      "f1-score": 0.837171052631579,
+      "support": 679.0
+    },
+    "pos": {
+      "precision": 0.7724550898203593,
+      "recall": 0.8037383177570093,
+      "f1-score": 0.7877862595419848,
+      "support": 321.0
+    },
+    "micro avg": {
+      "precision": 0.8805970149253731,
+      "recall": 0.767,
+      "f1-score": 0.8198824158204169,
+      "support": 1000.0
+    },
+    "macro avg": {
+      "precision": 0.8601567814092486,
+      "recall": 0.7766850646222454,
+      "f1-score": 0.8124786560867818,
+      "support": 1000.0
+    },
+    "weighted avg": {
+      "precision": 0.891553986998071,
+      "recall": 0.767,
+      "f1-score": 0.8213185340498191,
+      "support": 1000.0
+    }
+  },
+  "confusion_matrix": [
+    [
+      509,
+      76
+    ],
+    [
+      28,
+      258
+    ]
+  ],
+  "confusion_matrix_labels": [
+    "neg",
+    "pos"
+  ]
+}

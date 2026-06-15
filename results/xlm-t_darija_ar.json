@@ -1,0 +1,69 @@
+{
+  "model": "xlm-t",
+  "lang": "darija_ar",
+  "n": 1000,
+  "macro_f1": 0.723,
+  "latency_ms_per_utt": 109.578,
+  "peak_vram_mb": 0.0,
+  "n_params": 278045955,
+  "classes_evaluated": [
+    "neg",
+    "neu",
+    "pos"
+  ],
+  "classification_report": {
+    "neg": {
+      "precision": 0.6353383458646616,
+      "recall": 0.8407960199004975,
+      "f1-score": 0.7237687366167024,
+      "support": 201.0
+    },
+    "neu": {
+      "precision": 0.6521739130434783,
+      "recall": 0.5172413793103449,
+      "f1-score": 0.5769230769230769,
+      "support": 232.0
+    },
+    "pos": {
+      "precision": 0.8818181818181818,
+      "recall": 0.855379188712522,
+      "f1-score": 0.8683974932855864,
+      "support": 567.0
+    },
+    "accuracy": 0.774,
+    "macro avg": {
+      "precision": 0.7231101469087738,
+      "recall": 0.7378055293077881,
+      "f1-score": 0.7230297689417885,
+      "support": 1000.0
+    },
+    "weighted avg": {
+      "precision": 0.7789982644357931,
+      "recall": 0.774,
+      "f1-score": 0.7717050485990385,
+      "support": 1000.0
+    }
+  },
+  "confusion_matrix": [
+    [
+      169,
+      19,
+      13
+    ],
+    [
+      60,
+      120,
+      52
+    ],
+    [
+      37,
+      45,
+      485
+    ]
+  ],
+  "confusion_matrix_labels": [
+    "neg",
+    "neu",
+    "pos"
+  ]
+}
