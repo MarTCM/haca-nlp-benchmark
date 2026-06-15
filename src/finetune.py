@@ -100,7 +100,10 @@ def load_train_split(lang: str):
 
 
 def encode(df: pd.DataFrame, tokenizer, max_len=128) -> Dataset:
-    ds = Dataset.from_pandas(df)
+    df = df.copy()
+    df["text"] = df["text"].fillna("").astype(str)   # guard against NaN rows
+    df = df[df["label"].isin(LABEL2ID)]               # drop any unmapped labels
+    ds = Dataset.from_pandas(df, preserve_index=False)
 
     def tokenize(batch):
         out = tokenizer(
