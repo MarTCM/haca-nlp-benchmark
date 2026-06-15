@@ -106,8 +106,9 @@ def encode(df: pd.DataFrame, tokenizer, max_len=128) -> Dataset:
     ds = Dataset.from_pandas(df, preserve_index=False)
 
     def tokenize(batch):
+        texts = [str(t) for t in batch["text"]]   # force plain Python str (not Arrow array)
         out = tokenizer(
-            batch["text"], truncation=True, padding="max_length", max_length=max_len
+            texts, truncation=True, padding="max_length", max_length=max_len
         )
         out["labels"] = [LABEL2ID[l] for l in batch["label"]]
         return out
