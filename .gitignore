@@ -11,3 +11,4 @@ build/
 *.pt
 *.bin
 *.safetensors
+PLAN.md
