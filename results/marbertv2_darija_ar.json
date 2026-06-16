@@ -1,0 +1,71 @@
+{
+  "model": "marbertv2",
+  "lang": "darija_ar",
+  "n": 1000,
+  "macro_f1": 0.8441,
+  "latency_ms_per_utt": 2.454,
+  "peak_vram_mb": 2573.3,
+  "n_params": 162843651,
+  "classes_evaluated": [
+    "neg",
+    "neu",
+    "pos"
+  ],
+  "classification_report": {
+    "neg": {
+      "precision": 0.8480392156862745,
+      "recall": 0.8606965174129353,
+      "f1-score": 0.854320987654321,
+      "support": 201.0
+    },
+    "neu": {
+      "precision": 0.8,
+      "recall": 0.7068965517241379,
+      "f1-score": 0.7505720823798627,
+      "support": 232.0
+    },
+    "pos": {
+      "precision": 0.9086294416243654,
+      "recall": 0.9470899470899471,
+      "f1-score": 0.927461139896373,
+      "support": 567.0
+    },
+    "accuracy": 0.874,
+    "macro avg": {
+      "precision": 0.8522228857702133,
+      "recall": 0.8382276720756735,
+      "f1-score": 0.8441180699768522,
+      "support": 1000.0
+    },
+    "weighted avg": {
+      "precision": 0.8712487757539563,
+      "recall": 0.874,
+      "f1-score": 0.8717217079518902,
+      "support": 1000.0
+    }
+  },
+  "confusion_matrix": [
+    [
+      173,
+      18,
+      10
+    ],
+    [
+      24,
+      164,
+      44
+    ],
+    [
+      7,
+      23,
+      537
+    ]
+  ],
+  "confusion_matrix_labels": [
+    "neg",
+    "neu",
+    "pos"
+  ],
+  "gpu_train_minutes": 11.8,
+  "checkpoint": "/kaggle/working/benchmark/src/../checkpoints/marbertv2"
+}

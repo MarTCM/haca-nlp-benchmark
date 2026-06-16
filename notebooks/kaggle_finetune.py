@@ -253,6 +253,67 @@ else:
 
 print(f"\nTotal freed     : {freed_mb:.0f} MB")
 
+# ─────────────────────────────────────────────────────────────────────────────
+# STEP 5 — Atlas-Chat zero-shot (separate session recommended; ~1–2 h on T4)
+# ─────────────────────────────────────────────────────────────────────────────
+# Run cells 1–5 first (install deps, clone repo, verify test sets).
+# Then run cells 13–16 below.  Do NOT run a fine-tuning session at the same
+# time — the 4-bit model needs the full 16 GB.
+
+# %% 13 — Verify bitsandbytes is available
+import importlib
+try:
+    import bitsandbytes as bnb
+    print(f"bitsandbytes {bnb.__version__} — OK")
+except ImportError:
+    import subprocess, sys
+    subprocess.check_call([sys.executable, "-m", "pip", "install", "-q",
+                           "bitsandbytes>=0.43.0", "accelerate>=0.26.0"])
+    print("bitsandbytes installed — restart kernel if prompted")
+
+# %% 14 — Choose Atlas-Chat model size
+# 2B fits comfortably on T4 (16 GB) with 4-bit quantisation (~4 GB).
+# 9B requires ~10 GB; possible on T4 but tight — use only if quota allows.
+
+ATLAS_SIZE = "2b"   # ← change to "9b" if you have quota
+
+print(f"Selected: Atlas-Chat-{ATLAS_SIZE.upper()}")
+print(f"Targets : darija_ar, arabizi  (zero-shot, no training)")
+print(f"Est. time: {'~60 min' if ATLAS_SIZE == '2b' else '~120 min'} on T4")
+
+# %% 15 — Run Atlas-Chat zero-shot inference
+# Predictions + metrics written to:
+#   results/atlas-chat-2b_darija_ar.json
+#   results/atlas-chat-2b_arabizi.json
+#   results/summary.csv  (appended)
+#
+# Progress bar: each dot = 1 sample.  1000 samples × ~3-4 s/sample on T4.
+
+import sys, os
+sys.path.insert(0, os.path.join(REPO, "src"))
+
+from atlas_chat import run_atlas
+run_atlas(ATLAS_SIZE)
+
+# %% 16 — Show Atlas-Chat results
+import json, os
+
+RESULTS = os.path.join(REPO, "results")
+print(f"\n=== Atlas-Chat-{ATLAS_SIZE.upper()} results ===\n")
+for lang in ["darija_ar", "arabizi"]:
+    fname = f"atlas-chat-{ATLAS_SIZE}_{lang}.json"
+    path  = os.path.join(RESULTS, fname)
+    if not os.path.exists(path):
+        print(f"[MISSING] {fname}")
+        continue
+    d = json.load(open(path))
+    print(f"{lang}:")
+    print(f"  macro-F1         : {d['macro_f1']}")
+    print(f"  latency (median) : {d['latency_ms_per_utt']:.0f} ms/utt")
+    print(f"  peak VRAM        : {d['peak_vram_mb']:.0f} MB")
+    print(f"  non-response rate: {d.get('non_response_rate', 'N/A')}")
+    print()
+
 # %% 12 — (Optional) Run all four models in sequence
 # Uncomment to run everything in one long session (~2 h on T4).
 # Only do this if you have enough quota and the session won't time out.

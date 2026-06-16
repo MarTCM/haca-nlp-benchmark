@@ -1,0 +1,61 @@
+{
+  "model": "marbertv2",
+  "lang": "msa",
+  "n": 1000,
+  "macro_f1": 0.8375,
+  "latency_ms_per_utt": 4.397,
+  "peak_vram_mb": 3041.4,
+  "n_params": 162843651,
+  "classes_evaluated": [
+    "neg",
+    "pos"
+  ],
+  "classification_report": {
+    "neg": {
+      "precision": 0.9786821705426356,
+      "recall": 0.7437407952871871,
+      "f1-score": 0.8451882845188284,
+      "support": 679.0
+    },
+    "pos": {
+      "precision": 0.8648648648648649,
+      "recall": 0.7975077881619937,
+      "f1-score": 0.8298217179902755,
+      "support": 321.0
+    },
+    "micro avg": {
+      "precision": 0.937192118226601,
+      "recall": 0.761,
+      "f1-score": 0.8399558498896247,
+      "support": 1000.0
+    },
+    "macro avg": {
+      "precision": 0.9217735177037503,
+      "recall": 0.7706242917245905,
+      "f1-score": 0.837505001254552,
+      "support": 1000.0
+    },
+    "weighted avg": {
+      "precision": 0.9421468154200711,
+      "recall": 0.761,
+      "f1-score": 0.840255616663163,
+      "support": 1000.0
+    }
+  },
+  "confusion_matrix": [
+    [
+      505,
+      40
+    ],
+    [
+      11,
+      256
+    ]
+  ],
+  "confusion_matrix_labels": [
+    "neg",
+    "pos"
+  ],
+  "gpu_train_minutes": 11.8,
+  "checkpoint": "/kaggle/working/benchmark/src/../checkpoints/marbertv2"
+}

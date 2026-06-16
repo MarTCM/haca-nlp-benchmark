@@ -1,0 +1,71 @@
+{
+  "model": "qarib",
+  "lang": "darija_ar",
+  "n": 1000,
+  "macro_f1": 0.8265,
+  "latency_ms_per_utt": 2.722,
+  "peak_vram_mb": 2179.9,
+  "n_params": 135195651,
+  "classes_evaluated": [
+    "neg",
+    "neu",
+    "pos"
+  ],
+  "classification_report": {
+    "neg": {
+      "precision": 0.84,
+      "recall": 0.835820895522388,
+      "f1-score": 0.8379052369077307,
+      "support": 201.0
+    },
+    "neu": {
+      "precision": 0.7208333333333333,
+      "recall": 0.7456896551724138,
+      "f1-score": 0.7330508474576272,
+      "support": 232.0
+    },
+    "pos": {
+      "precision": 0.9142857142857143,
+      "recall": 0.9029982363315696,
+      "f1-score": 0.9086069210292813,
+      "support": 567.0
+    },
+    "accuracy": 0.853,
+    "macro avg": {
+      "precision": 0.8250396825396825,
+      "recall": 0.8281695956754572,
+      "f1-score": 0.8265210017982131,
+      "support": 1000.0
+    },
+    "weighted avg": {
+      "precision": 0.8544733333333333,
+      "recall": 0.853,
+      "f1-score": 0.8536668734522259,
+      "support": 1000.0
+    }
+  },
+  "confusion_matrix": [
+    [
+      168,
+      23,
+      10
+    ],
+    [
+      21,
+      173,
+      38
+    ],
+    [
+      11,
+      44,
+      512
+    ]
+  ],
+  "confusion_matrix_labels": [
+    "neg",
+    "neu",
+    "pos"
+  ],
+  "gpu_train_minutes": 11.3,
+  "checkpoint": "/kaggle/working/benchmark/src/../checkpoints/qarib"
+}

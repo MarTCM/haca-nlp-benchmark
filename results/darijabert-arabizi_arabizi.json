@@ -1,0 +1,56 @@
+{
+  "model": "darijabert-arabizi",
+  "lang": "arabizi",
+  "n": 1000,
+  "macro_f1": 0.9834,
+  "latency_ms_per_utt": 3.863,
+  "peak_vram_mb": 2800.9,
+  "n_params": 170523651,
+  "classes_evaluated": [
+    "neg",
+    "pos"
+  ],
+  "classification_report": {
+    "neg": {
+      "precision": 0.9767441860465116,
+      "recall": 0.9795918367346939,
+      "f1-score": 0.9781659388646288,
+      "support": 343.0
+    },
+    "pos": {
+      "precision": 0.989329268292683,
+      "recall": 0.9878234398782344,
+      "f1-score": 0.9885757806549885,
+      "support": 657.0
+    },
+    "accuracy": 0.985,
+    "macro avg": {
+      "precision": 0.9830367271695972,
+      "recall": 0.9837076383064641,
+      "f1-score": 0.9833708597598086,
+      "support": 1000.0
+    },
+    "weighted avg": {
+      "precision": 0.9850125850822462,
+      "recall": 0.985,
+      "f1-score": 0.985005204920895,
+      "support": 1000.0
+    }
+  },
+  "confusion_matrix": [
+    [
+      336,
+      7
+    ],
+    [
+      8,
+      649
+    ]
+  ],
+  "confusion_matrix_labels": [
+    "neg",
+    "pos"
+  ],
+  "gpu_train_minutes": 3.4,
+  "checkpoint": "/kaggle/working/benchmark/src/../checkpoints/darijabert-arabizi"
+}

@@ -1,9 +1,5 @@
 """
-Step 5 — Atlas-Chat zero-shot sentiment (GATED model).
-
-Requires:
-  huggingface-cli login   (Gemma/MBZUAI license accepted)
-  pip install bitsandbytes accelerate
+Step 5 — Atlas-Chat zero-shot sentiment.
 
 Usage:
     python src/atlas_chat.py --model 2b
@@ -11,15 +7,18 @@ Usage:
 """
 
 import argparse
+import os
 import re
+import statistics
 import time
 
+import pandas as pd
 import torch
 from transformers import AutoModelForCausalLM, AutoTokenizer, BitsAndBytesConfig
 
 from utils import set_seeds, SEED
 from label_maps import ATLAS_CHAT_MAP, ATLAS_CHAT_NON_REPONSE, apply_map
-from harness import evaluate_model, free_gpu
+from harness import evaluate_model, free_gpu, WARMUP
 
 set_seeds()
 
@@ -28,7 +27,7 @@ MODEL_IDS = {
     "9b": "MBZUAI-Paris/Atlas-Chat-9B",
 }
 
-LANGS = ["darija_ar", "arabizi"]  # as per plan
+LANGS = ["darija_ar", "arabizi"]
 
 PROMPT_TEMPLATE = (
     "أنت نظام تحليل مشاعر. صنّف النص التالي إلى فئة واحدة فقط من: "
@@ -37,7 +36,6 @@ PROMPT_TEMPLATE = (
     "الإجابة (كلمة واحدة فقط):"
 )
 
-VALID_LABELS = set(ATLAS_CHAT_MAP.keys())
 LABEL_RE = re.compile(r"\b(positif|neutre|negatif)\b", re.IGNORECASE)
 
 
@@ -59,7 +57,7 @@ def build_quantized_model(model_id: str):
 
 
 def predict_one(text: str, tokenizer, model) -> str:
-    prompt = PROMPT_TEMPLATE.format(text=text[:300])  # truncate long inputs
+    prompt = PROMPT_TEMPLATE.format(text=text[:300])
     inputs = tokenizer(prompt, return_tensors="pt").to(model.device)
     with torch.no_grad():
         out = model.generate(
@@ -69,49 +67,44 @@ def predict_one(text: str, tokenizer, model) -> str:
             temperature=1.0,
             pad_token_id=tokenizer.eos_token_id,
         )
-    generated = tokenizer.decode(out[0][inputs["input_ids"].shape[1]:], skip_special_tokens=True)
+    generated = tokenizer.decode(
+        out[0][inputs["input_ids"].shape[1]:], skip_special_tokens=True
+    )
     m = LABEL_RE.search(generated)
-    if m:
-        return m.group(0).lower()
-    return ATLAS_CHAT_NON_REPONSE
+    return m.group(0).lower() if m else ATLAS_CHAT_NON_REPONSE
 
 
 def run_atlas(model_size: str) -> None:
     model_id = MODEL_IDS[model_size]
     print(f"\n=== Atlas-Chat-{model_size.upper()} ({model_id}) [zero-shot] ===")
-    print("  NOTE: GATED model — ensure huggingface-cli login is done.")
 
     tokenizer, model = build_quantized_model(model_id)
 
     for lang in LANGS:
-        non_response_count = 0
-        total = [0]
-
-        def predict_fn(texts):
-            preds = []
-            for t in texts:
-                raw = predict_one(t, tokenizer, model)
-                total[0] += 1
-                if raw == ATLAS_CHAT_NON_REPONSE:
-                    non_response_count_ = non_response_count  # captured below
-                    preds.append("neu")  # fallback for metric computation
-                else:
-                    try:
-                        preds.append(apply_map(raw, ATLAS_CHAT_MAP))
-                    except KeyError:
-                        preds.append("neu")
-            return preds
-
-        # We need to count non-responses separately
-        import pandas as pd, os
         data_path = os.path.join(
             os.path.dirname(__file__), "..", "data", "test_sets", f"{lang}.csv"
         )
         df = pd.read_csv(data_path)
         texts = df["text"].tolist()
-        raw_preds = [predict_one(t, tokenizer, model) for t in texts]
+
+        # Warm-up (not timed, matches harness convention)
+        print(f"  Warming up on {WARMUP} samples …")
+        for t in texts[:WARMUP]:
+            predict_one(t, tokenizer, model)
+
+        # Timed inference — measure each call individually (generate() is sequential)
+        print(f"  Running inference on {len(texts)} samples …")
+        latencies_ms = []
+        raw_preds = []
+        for t in texts:
+            t0 = time.perf_counter()
+            raw = predict_one(t, tokenizer, model)
+            latencies_ms.append((time.perf_counter() - t0) * 1000)
+            raw_preds.append(raw)
+
+        median_latency_ms = statistics.median(latencies_ms)
         non_resp = sum(1 for r in raw_preds if r == ATLAS_CHAT_NON_REPONSE)
-        non_resp_rate = non_resp / len(texts)
+        non_resp_rate = round(non_resp / len(texts), 4)
 
         canonical = []
         for r in raw_preds:
@@ -123,21 +116,21 @@ def run_atlas(model_size: str) -> None:
                 except KeyError:
                     canonical.append("neu")
 
-        def _static_predict(texts_):
-            return canonical[:len(texts_)]
-
         evaluate_model(
-            f"atlas-chat-{model_size}", lang, _static_predict, model_obj=model,
+            f"atlas-chat-{model_size}",
+            lang,
+            lambda texts_: canonical[: len(texts_)],
+            model_obj=model,
             extra_meta={
-                "non_response_rate": round(non_resp_rate, 4),
+                "non_response_rate": non_resp_rate,
                 "non_response_count": non_resp,
                 "model_size": model_size,
                 "quantization": "4bit-nf4",
             },
+            latency_override_ms=median_latency_ms,
         )
 
     free_gpu(model)
-    del model
 
 
 if __name__ == "__main__":

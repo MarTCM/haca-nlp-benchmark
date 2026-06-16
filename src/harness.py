@@ -78,6 +78,7 @@ def evaluate_model(
     predict_fn: Callable[[List[str]], List[str]],
     model_obj=None,
     extra_meta: dict | None = None,
+    latency_override_ms: float | None = None,
 ) -> dict:
     """
     Parameters
@@ -104,15 +105,19 @@ def evaluate_model(
 
     _reset_vram_counter()
 
-    # Warm-up
-    _ = predict_fn(texts[:WARMUP])
-
-    # Timed inference
-    t0 = time.perf_counter()
-    y_pred = predict_fn(texts)
-    elapsed = time.perf_counter() - t0
-
-    latency_ms = (elapsed / len(texts)) * 1000  # ms per utterance
+    if latency_override_ms is not None:
+        # Caller measured real inference latency (e.g. token-by-token LLM generate).
+        # predict_fn returns pre-computed predictions; skip warmup+timing here.
+        y_pred = predict_fn(texts)
+        latency_ms = latency_override_ms
+    else:
+        # Warm-up
+        _ = predict_fn(texts[:WARMUP])
+        # Timed inference
+        t0 = time.perf_counter()
+        y_pred = predict_fn(texts)
+        elapsed = time.perf_counter() - t0
+        latency_ms = (elapsed / len(texts)) * 1000  # ms per utterance
 
     classes = sorted(set(y_true))  # only classes present in ground truth
     macro_f1 = f1_score(y_true, y_pred, labels=classes, average="macro", zero_division=0)
