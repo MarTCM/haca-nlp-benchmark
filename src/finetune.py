@@ -185,10 +185,11 @@ def finetune(model_key: str) -> None:
     print(f"  Training done in {gpu_minutes:.1f} min (GPU time cost).")
 
     # Evaluate through the shared harness
-    from transformers import pipeline as hf_pipeline, AutoTokenizer
+    from transformers import pipeline as hf_pipeline
+    from transformers import AutoTokenizer as _AutoTokenizer
     from label_maps import FINETUNED_MAP, apply_map
 
-    _tokenizer = AutoTokenizer.from_pretrained(ckpt_path)
+    _tokenizer = _AutoTokenizer.from_pretrained(ckpt_path)
     _tokenizer.model_max_length = 512  # pipeline ignores max_length kwarg; patch tokenizer directly
 
     pipe = hf_pipeline(
