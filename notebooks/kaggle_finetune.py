@@ -159,61 +159,73 @@ for fname in sorted(os.listdir(RESULTS)):
         print(f"  VRAM     : {d['peak_vram_mb']} MB")
 
 # %% 9 — Package checkpoints for download
-# Zip the checkpoint directory.
-# Saved relative to CWD (= /kaggle/working/benchmark/) so FileLink can find it.
+# Zip saved to /kaggle/working/ (Jupyter server root) so FileLink URLs resolve correctly.
 
 import shutil
 
+WORK      = "/kaggle/working"
 ckpt_src  = os.path.join(REPO, "checkpoints", MODEL_KEY)
-zip_name  = f"checkpoint_{MODEL_KEY}"          # no path — lands in CWD = REPO
-zip_final = os.path.join(REPO, zip_name + ".zip")
+zip_dest  = os.path.join(WORK, f"checkpoint_{MODEL_KEY}")   # no .zip — make_archive adds it
+zip_final = zip_dest + ".zip"
 
 if os.path.isdir(ckpt_src):
-    shutil.make_archive(zip_name, "zip", ckpt_src)   # creates ./<zip_name>.zip in CWD
+    shutil.make_archive(zip_dest, "zip", ckpt_src)
     size_mb = os.path.getsize(zip_final) / 1024 ** 2
     print(f"Checkpoint zipped : {zip_final}  ({size_mb:.0f} MB)")
-    print("Run cell 10 for a clickable download link.")
+    print("Run cell 10 for clickable download links.")
 else:
     print("[WARN] Checkpoint directory not found — fine-tuning may have failed.")
 
 # %% 10 — Clickable download links for this model's outputs
-# FileLink resolves paths relative to CWD (= /kaggle/working/benchmark/ after cell 2).
-# All files are either IN that directory or addressed with os.path.relpath(f, CWD).
+#
+# FileLink has two constraints that must BOTH be satisfied:
+#   1. os.path.exists(path) must be True  — checked relative to CWD
+#   2. The generated href must point to a real file on the Jupyter server
+#      — served from /kaggle/working/ regardless of CWD
+#
+# Fix: temporarily chdir to /kaggle/working/ so both constraints use the same root.
 
-import glob
+import glob, shutil
 from IPython.display import display, FileLink
 
-CWD = os.getcwd()   # /kaggle/working/benchmark
+WORK = "/kaggle/working"
+_cwd = os.getcwd()          # save current dir (/kaggle/working/benchmark)
+os.chdir(WORK)              # move to Jupyter server root for FileLink
 
 print(f"=== Download links for: {MODEL_KEY} ===\n")
 
-# ── Checkpoint zip (saved into CWD by cell 9) ─────────────────────────────
-zip_path = os.path.join(CWD, f"checkpoint_{MODEL_KEY}.zip")
-if os.path.exists(zip_path):
-    size_mb = os.path.getsize(zip_path) / 1024 ** 2
-    rel = os.path.relpath(zip_path, CWD)   # just "checkpoint_darijabert.zip"
-    display(FileLink(rel, result_html_prefix=f"<b>Checkpoint zip</b> ({size_mb:.0f} MB) — "))
+# ── Checkpoint zip ─────────────────────────────────────────────────────────
+zip_name = f"checkpoint_{MODEL_KEY}.zip"   # relative to WORK
+if os.path.exists(zip_name):
+    size_mb = os.path.getsize(zip_name) / 1024 ** 2
+    display(FileLink(zip_name,
+                     result_html_prefix=f"<b>Checkpoint zip</b> ({size_mb:.0f} MB) — "))
 else:
-    print(f"[WARN] Checkpoint zip not found at {zip_path} — run cell 9 first.")
+    print(f"[WARN] {zip_name} not found — run cell 9 first.")
 
 print()
 
 # ── Results JSON files ─────────────────────────────────────────────────────
-results_dir = os.path.join(REPO, "results")
+# Copy JSONs to WORK so they're also reachable from the Jupyter server root.
+results_dir = os.path.join(_cwd, "results")
 json_files  = sorted(glob.glob(os.path.join(results_dir, f"{MODEL_KEY}_*.json")))
 if json_files:
     for jf in json_files:
-        rel = os.path.relpath(jf, CWD)    # e.g. "results/darijabert_darija_ar.json"
-        display(FileLink(rel, result_html_prefix=f"<b>Results</b> ({os.path.basename(jf)}) — "))
+        fname = os.path.basename(jf)
+        shutil.copy2(jf, os.path.join(WORK, fname))   # copy to WORK
+        display(FileLink(fname,
+                         result_html_prefix=f"<b>Results</b> ({fname}) — "))
 else:
     print(f"[WARN] No results JSON found for '{MODEL_KEY}' — run cell 7 first.")
+
+os.chdir(_cwd)              # restore original working directory
 
 # %% 11 — Free space: delete the checkpoint zip after downloading
 # Run ONLY after confirming the download completed.
 # The unzipped weights in benchmark/checkpoints/<model>/ are NOT touched —
 # only the zip copy created for downloading is removed.
 
-zip_path = os.path.join(os.getcwd(), f"checkpoint_{MODEL_KEY}.zip")
+zip_path = os.path.join("/kaggle/working", f"checkpoint_{MODEL_KEY}.zip")
 
 if os.path.exists(zip_path):
     size_mb = os.path.getsize(zip_path) / 1024 ** 2
