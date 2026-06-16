@@ -220,20 +220,38 @@ else:
 
 os.chdir(_cwd)              # restore original working directory
 
-# %% 11 — Free space: delete the checkpoint zip after downloading
-# Run ONLY after confirming the download completed.
-# The unzipped weights in benchmark/checkpoints/<model>/ are NOT touched —
-# only the zip copy created for downloading is removed.
+# %% 11 — Free space: delete the zip AND the unzipped checkpoint weights
+# Run ONLY after confirming the zip download completed.
 
+import shutil
+
+freed_mb = 0
+
+# ── 1. Checkpoint zip (/kaggle/working/checkpoint_<model>.zip) ─────────────
 zip_path = os.path.join("/kaggle/working", f"checkpoint_{MODEL_KEY}.zip")
-
 if os.path.exists(zip_path):
-    size_mb = os.path.getsize(zip_path) / 1024 ** 2
+    mb = os.path.getsize(zip_path) / 1024 ** 2
     os.remove(zip_path)
-    print(f"Deleted: {zip_path}")
-    print(f"Freed  : {size_mb:.0f} MB")
+    freed_mb += mb
+    print(f"Deleted zip     : {zip_path}  ({mb:.0f} MB)")
 else:
-    print(f"Nothing to delete — {zip_path} does not exist.")
+    print(f"Zip not found   : {zip_path}")
+
+# ── 2. Unzipped weights (benchmark/checkpoints/<model>/) ───────────────────
+ckpt_dir = os.path.join(REPO, "checkpoints", MODEL_KEY)
+if os.path.isdir(ckpt_dir):
+    mb = sum(
+        os.path.getsize(os.path.join(dp, f))
+        for dp, _, files in os.walk(ckpt_dir)
+        for f in files
+    ) / 1024 ** 2
+    shutil.rmtree(ckpt_dir)
+    freed_mb += mb
+    print(f"Deleted weights : {ckpt_dir}  ({mb:.0f} MB)")
+else:
+    print(f"Weights not found: {ckpt_dir}")
+
+print(f"\nTotal freed     : {freed_mb:.0f} MB")
 
 # %% 12 — (Optional) Run all four models in sequence
 # Uncomment to run everything in one long session (~2 h on T4).
