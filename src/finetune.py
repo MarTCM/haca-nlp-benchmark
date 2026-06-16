@@ -185,19 +185,22 @@ def finetune(model_key: str) -> None:
     print(f"  Training done in {gpu_minutes:.1f} min (GPU time cost).")
 
     # Evaluate through the shared harness
-    from transformers import pipeline as hf_pipeline
+    from transformers import pipeline as hf_pipeline, AutoTokenizer
     from label_maps import FINETUNED_MAP, apply_map
+
+    _tokenizer = AutoTokenizer.from_pretrained(ckpt_path)
+    _tokenizer.model_max_length = 512  # pipeline ignores max_length kwarg; patch tokenizer directly
 
     pipe = hf_pipeline(
         "text-classification",
         model=ckpt_path,
-        tokenizer=ckpt_path,
+        tokenizer=_tokenizer,
         device=0 if torch.cuda.is_available() else -1,
         top_k=None,
     )
 
     def predict_fn(texts):
-        results = pipe(texts, batch_size=32, truncation=True, max_length=512)
+        results = pipe(texts, batch_size=32, truncation=True)
         preds = []
         for item in results:
             scores = item if isinstance(item, list) else [item]
