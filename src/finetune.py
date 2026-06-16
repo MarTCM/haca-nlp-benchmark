@@ -197,7 +197,7 @@ def finetune(model_key: str) -> None:
     )
 
     def predict_fn(texts):
-        results = pipe(texts, batch_size=32, truncation=True)
+        results = pipe(texts, batch_size=32, truncation=True, max_length=512)
         preds = []
         for item in results:
             scores = item if isinstance(item, list) else [item]
