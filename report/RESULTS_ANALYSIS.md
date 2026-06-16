@@ -2,7 +2,7 @@
 
 **Author:** Marwane ElBaraka  
 **Date:** 2026-06-16  
-**Scope:** Complete analysis covering three pre-trained models (Step 3) and four fine-tuned models (Step 4), across all four target languages. Figure analysis included at the end.
+**Scope:** Complete analysis covering three pre-trained models (Step 3), four fine-tuned models (Step 4), and Atlas-Chat-2B LLM zero-shot (Step 5), across all four target languages. Figure analysis included at the end.
 
 ---
 
@@ -18,6 +18,8 @@
 8. [What the fine-tuned models actually achieved vs predictions](#8-what-the-fine-tuned-models-actually-achieved-vs-predictions)
 9. [Figure analysis](#9-figure-analysis)
 10. [Checklist: how to analyse a new model yourself](#10-checklist-how-to-analyse-a-new-model-yourself)
+
+> **Step 5 addition (Atlas-Chat-2B):** Sections 4.1, 5.8, 6.1, 6.4, and 7.7 have been updated with Atlas-Chat-2B zero-shot results.
 
 ---
 
@@ -254,6 +256,7 @@ These are patterns that should trigger deeper investigation:
 | DarijaBERT-arabizi | — | — | — | **0.983** | 171M | Fine-tuned (Step 4) |
 | MARBERTv2 | **0.844** | — | 0.838 | — | 163M | Fine-tuned (Step 4) |
 | QARIB | 0.827 | — | 0.812 | — | 135M | Fine-tuned (Step 4) |
+| Atlas-Chat-2B | 0.727 | — | — | 0.978 | 1602M | LLM zero-shot (Step 5) |
 
 **Bold** = best result for that language column across all models tested.
 
@@ -261,6 +264,7 @@ Key takeaways at a glance:
 - Fine-tuned models set new best scores on every language they were trained for except MSA, where the ready-made camelbert-da (0.924) remains unbeaten.
 - DarijaBERT-arabizi's 0.983 is the highest single (model × language) score in the entire benchmark.
 - MARBERTv2 is the strongest model for Moroccan Darija (0.844), well above the 0.75 threshold from the plan.
+- Atlas-Chat-2B (1.6B LLM, zero-shot) scores 0.727 on darija_ar — barely above xlm-t and well below the fine-tuned encoders — but reaches 0.978 on arabizi, only 0.5 points behind DarijaBERT-arabizi. It is 60–75× slower than fine-tuned encoders (185ms vs 2–4ms per utterance).
 
 ---
 
@@ -632,23 +636,121 @@ The QARIB MSA result (0.812) is slightly below MARBERTv2's (0.838), suggesting t
 
 ---
 
+### 5.8 Atlas-Chat-2B — LLM zero-shot on darija_ar and arabizi
+
+**What it is:** 1.6B-parameter causal language model from MBZUAI-Paris, based on Gemma-2B, pre-trained on Arabic and Moroccan content (including Darija). Evaluated zero-shot — no task-specific fine-tuning — using a closed-vocabulary Arabic prompt:
+
+```
+أنت نظام تحليل مشاعر. صنّف النص التالي إلى فئة واحدة فقط من:
+positif, neutre, negatif.
+النص: {text}
+الإجابة (كلمة واحدة فقط):
+```
+
+The model is loaded in 4-bit NF4 quantisation on T4, consuming ~4GB VRAM. Inference is sequential (one `generate()` call per utterance, not batched). Non-response rate = fraction of inputs where the model did not output one of the three valid tokens.
+
+**Headline numbers:**
+
+| Language | Macro-F1 | Accuracy | Latency (GPU ms) | Non-response |
+|---|---|---|---|---|
+| darija\_ar | 0.727 | 0.813 | 186.4 | 0.5% (5/1000) |
+| arabizi | 0.978 | 0.975 | 184.5 | 1.2% (12/1000) |
+
+---
+
+**Per-class breakdown — darija_ar (3-class):**
+
+```
+neg:  P=0.675  R=0.950  F1=0.789  support=201   ← over-triggers negative
+neu:  P=0.894  R=0.328  F1=0.480  support=232   ← catastrophically low recall
+pos:  P=0.864  R=0.963  F1=0.911  support=567
+macro-F1 = 0.727
+```
+
+**Confusion matrix for darija_ar:** [[191, 0, 10], [80, 76, 76], [12, 9, 546]]
+
+The defining feature of Atlas-Chat on 3-class darija_ar is the **collapse of neutral recall to 32.8%**. Reading the neutral row [80, 76, 76]: of 232 true-neutral tweets, 80 went to neg, 76 to pos, and only 76 were correctly identified as neutral. The errors are split almost evenly between neg and pos — the model cannot reliably identify the absence of strong sentiment.
+
+Notice also a striking detail: the neutral column for neg is [191, 80, 12], meaning the neg-prediction column has 80 false positives from neutral. Atlas-Chat over-triggers negative: it labels 80 neutral tweets as negative, giving neg very high recall (95.0%) but low precision (67.5%). The opposite happens for positive — it absorbs 76 neutral tweets correctly but also mis-attracts them. The result is a model that handles polar sentiment well but treats neutrality as a residual category.
+
+The non-response rate (0.5%) is negligible: only 5 inputs produced output outside `{positif, neutre, negatif}`. These were mapped to "neu" (fallback) for metric computation.
+
+**Why does the LLM fail on neutral for Darija?**
+
+Two compounding factors:
+
+1. **LLM training bias:** Large language models are trained predominantly on texts where sentiment is expressed. Neutral, factual, or descriptive content appears in training data but is not inherently associated with sentiment labels. The model's prompt asks for a three-way classification, but its prior probability for "neutre" given Darija content may be intrinsically lower than for encoders that were directly supervised on neutral examples.
+
+2. **Prompt-completion dynamics:** Causal LLMs predict the next token greedily (do_sample=False). Given the Arabic prompt ending in "الإجابة (كلمة واحدة فقط):", the most probable completion is whichever sentiment word is most strongly associated with the input tokens. For ambiguous or low-affect Darija text, the model has to make a binary-ish choice rather than confidently outputting "neutre". Encoder models have a dedicated neutral output neuron trained directly on neutral examples — this makes them structurally better equipped for the three-way distinction.
+
+**Comparison to fine-tuned encoders on darija_ar:**
+
+| Model | F1(neg) | F1(neu) | F1(pos) | Macro-F1 |
+|---|---|---|---|---|
+| xlm-t (ready-made) | 0.724 | 0.577 | 0.868 | 0.723 |
+| Atlas-Chat-2B (LLM) | 0.789 | **0.480** | 0.911 | 0.727 |
+| DarijaBERT (fine-tuned) | 0.743 | 0.690 | 0.891 | 0.775 |
+| MARBERTv2 (fine-tuned) | **0.854** | **0.751** | **0.927** | **0.844** |
+
+Atlas-Chat gets better per-class scores on neg and pos than xlm-t, but its catastrophic neutral F1 (0.480 vs xlm-t's 0.577) drags the macro average to near-baseline level. It is a worse model for 3-class Darija than even xlm-t.
+
+**Plan threshold check for darija_ar:** The plan states to prefer a fine-tuned encoder over the LLM if the encoder macro-F1 ≥ 0.75 **or** if the LLM–encoder gap < 5 F1 points. MARBERTv2 scores 0.844 (≥ 0.75 ✓) and the gap is 11.7 points (not < 5 ✗ for the second condition). Both conditions together mean: **prefer the fine-tuned encoder for darija_ar. The LLM is not recommended for this language.**
+
+---
+
+**Per-class breakdown — arabizi (binary):**
+
+```
+neg:  P=0.982  R=0.950  F1=0.966  support=343
+pos:  P=0.992  R=0.988  F1=0.990  support=657
+macro-F1 = 0.978
+```
+
+**Confusion matrix for arabizi:** [[326, 5], [6, 649]]
+
+Total errors: **11 out of 1000** (1.1% error rate, after accounting for 12 non-responses mapped to "neu" which become misclassifications). The errors are symmetric (5 neg→pos, 6 pos→neg) — no systematic directional bias. The model has a clear, confident decision boundary between negative and positive Arabizi content.
+
+This is an exceptional result. Atlas-Chat achieves 0.978 zero-shot — without any sentiment-specific training — on a task that took DarijaBERT-arabizi 3.4 minutes of supervised fine-tuning to reach 0.983. The gap between the LLM and the best encoder is **0.5 F1 points**, well within margin of noise.
+
+**Why does the LLM succeed on arabizi when it fails on darija_ar neutral?**
+
+The binary nature of the arabizi task is the key difference. The model only has to choose between two polar classes (negative vs positive), which plays to the strengths of an LLM trained on human-written sentiment content. Moroccan Arabizi YouTube comments tend to use strong, unambiguous sentiment language — intensifiers, exclamation marks, emotion words — making the boundary especially sharp. There is no neutral class to get confused by.
+
+**Plan threshold check for arabizi:** Encoder score = 0.983 (≥ 0.75 ✓). LLM–encoder gap = 0.5 points (< 5 ✓). First condition alone is sufficient: **prefer the fine-tuned encoder**. However, the gap is so small (0.5 points) that in a zero-GPU deployment scenario (no T4 available for fine-tuned inference), Atlas-Chat's zero-shot result would be fully acceptable.
+
+**Latency reality check:**
+
+Atlas-Chat runs at ~185ms/utterance on a T4 GPU with 4-bit quantisation. This is sequential — `generate()` is called once per text. Compare:
+
+| Category | Latency | 30-min programme |
+|---|---|---|
+| Fine-tuned encoders (GPU T4) | 2–4 ms/utt | 7–14 seconds |
+| Atlas-Chat-2B (GPU T4, sequential) | ~185 ms/utt | ~11 minutes |
+
+The LLM is 45–75× slower than fine-tuned encoders on the same hardware. For near-real-time broadcast monitoring, this makes Atlas-Chat impractical even with a GPU. Its use case would be: offline batch analysis where GPU is available, and no training data or time exists for fine-tuning.
+
+**Summary verdict for Atlas-Chat-2B:** A tale of two tasks. On binary arabizi sentiment, it is outstanding (0.978 zero-shot, 0.5 points behind the fine-tuned specialist) — proof that a well-trained Arabic LLM understands Moroccan Arabizi sentiment with no task-specific training. On 3-class darija_ar, it fails to detect neutral (F1=0.480) and offers no advantage over xlm-t. Its 185ms latency makes it 45–75× slower than fine-tuned encoders and operationally unsuitable for real-time monitoring. The fine-tuned encoders remain the recommended choice for both languages.
+
+---
+
 ## 6. Language-by-language analysis
 
 ---
 
 ### 6.1 Moroccan Darija — Arabic script (`darija_ar`)
 
-**Rankings after fine-tuning:**
+**Rankings after fine-tuning and LLM evaluation:**
 
 | Model | Macro-F1 | Type |
 |---|---|---|
 | MARBERTv2 | **0.844** | Fine-tuned |
 | QARIB | 0.827 | Fine-tuned |
 | DarijaBERT | 0.775 | Fine-tuned |
+| Atlas-Chat-2B | 0.727 | LLM zero-shot |
 | xlm-t | 0.723 | Ready-made |
 | camelbert-da | 0.701 | Ready-made |
 
-All three fine-tuned models beat both ready-made baselines. The gap is substantial: MARBERTv2 is +12.1 points over xlm-t and +14.3 points over camelbert-da. Fine-tuning on task-specific Moroccan Darija data is clearly the right approach for this language.
+All three fine-tuned models beat both ready-made baselines and the LLM. The gap is substantial: MARBERTv2 is +12.1 points over xlm-t and +14.3 points over camelbert-da. Fine-tuning on task-specific Moroccan Darija data is clearly the right approach for this language.
 
 **The neutral class story:**
 
@@ -703,18 +805,21 @@ A proper fix would be to fine-tune a separate head specifically on MSA data (AST
 
 ### 6.4 Moroccan Arabizi (`arabizi`)
 
-**Rankings after fine-tuning:**
+**Rankings after fine-tuning and LLM evaluation:**
 
 | Model | Macro-F1 | Type |
 |---|---|---|
 | DarijaBERT-arabizi | **0.983** | Fine-tuned |
+| Atlas-Chat-2B | 0.978 | LLM zero-shot |
 | xlm-t | 0.762 | Ready-made |
 
 DarijaBERT-arabizi resolves the biggest open problem from Step 3 completely. xlm-t was the only ready-made model available for Arabizi, scoring 0.762 with 31.2% abstentions predicted as neutral. DarijaBERT-arabizi scores 0.983 with 1.5% total errors and no abstentions.
 
-The +22.1 point improvement is the largest single improvement in the entire benchmark. It is also the most meaningful because it converts what was effectively an unreliable system (31% of inputs answered incorrectly as "unknown") into one that is operationally trustworthy.
+Atlas-Chat-2B zero-shot reaches 0.978 — only 0.5 points behind DarijaBERT-arabizi. This is the one case in the entire benchmark where the LLM competes with a fine-tuned encoder. The gap is so small that for a zero-GPU deployment (no fine-tuned model available), Atlas-Chat's zero-shot result is operationally acceptable. For production with a GPU, DarijaBERT-arabizi is still recommended because it is 45× faster (3.9ms vs 184ms).
 
-**Recommendation:** DarijaBERT-arabizi is the unambiguous choice for Arabizi. There is no meaningful competition.
+The +22.1 point improvement of DarijaBERT-arabizi over xlm-t (+22.5 for Atlas-Chat over xlm-t) confirms that Arabizi was the most underserved language in the benchmark — both the fine-tuned specialist and the LLM dramatically outperform the multilingual baseline.
+
+**Recommendation:** DarijaBERT-arabizi is the recommended choice for Arabizi due to superior latency (45× faster). Atlas-Chat-2B is a valid fallback if no GPU is available for serving a fine-tuned model.
 
 ---
 
@@ -799,6 +904,36 @@ The benchmark repeatedly demonstrates that parameter count is not predictive of 
 | xlm-t | 278M | 0.813 | msa |
 
 The largest model (xlm-t, 278M) scores 0.813 on its best language. Four out of six smaller models beat it on their respective target languages. The distilcamembert result (68M → 0.949) is particularly striking: the smallest model achieves the second-highest single score in the benchmark.
+
+---
+
+### 7.7 LLM zero-shot vs fine-tuned encoders: task difficulty determines the winner
+
+Atlas-Chat-2B provides a direct comparison between a large LLM (1.6B params, zero-shot) and fine-tuned encoders (135–171M params, task-specific training). The outcome depends entirely on task structure:
+
+| Task | LLM (Atlas-Chat) | Best encoder | Gap | Verdict |
+|---|---|---|---|---|
+| arabizi binary (neg/pos) | 0.978 | DarijaBERT-arabizi 0.983 | 0.5 pts | LLM competitive |
+| darija_ar 3-class (neg/neu/pos) | 0.727 | MARBERTv2 0.844 | 11.7 pts | Encoder dominates |
+
+The pattern is clear: when the task reduces to distinguishing polar sentiment on expressive text (arabizi binary), the LLM's language understanding transfers well and it nearly matches the specialist. When the task requires reliably detecting the *absence* of sentiment (neutral class), the LLM degrades severely — Atlas-Chat's neutral F1 on darija_ar is 0.480, far below even the xlm-t baseline (0.577).
+
+This generalises a known LLM limitation: large language models trained on human-generated content see a non-representative distribution of neutrality. Most text on the internet expresses some opinion or affect; truly neutral, factual, descriptive text is proportionally rarer and less distinctively labelled in pretraining. Fine-tuned encoders have an explicit neutral output neuron trained on supervised neutral examples — a structural advantage that the LLM cannot overcome via prompting alone.
+
+**Latency cost of the LLM advantage:**
+
+Even in the arabizi case where Atlas-Chat is competitive, the cost is steep:
+
+| Model | Latency | GPU required | 30-min programme |
+|---|---|---|---|
+| DarijaBERT-arabizi (fine-tuned) | 3.9 ms/utt | T4 GPU | ~14 seconds |
+| Atlas-Chat-2B (zero-shot) | 184 ms/utt | T4 GPU | ~11 minutes |
+
+Both require a T4 GPU. The fine-tuned encoder is 47× faster. For batch offline processing, Atlas-Chat is slow but feasible. For near-real-time monitoring, it is unsuitable regardless of accuracy.
+
+**Decision rule (from the plan):** Prefer the fine-tuned encoder if its macro-F1 ≥ 0.75 **or** if the LLM–encoder gap < 5 F1 points. Applied here:
+- darija_ar: encoder = 0.844 ≥ 0.75 ✓ → use encoder
+- arabizi: gap = 0.5 pts < 5 ✓ → encoder still preferred (per rule), but Atlas-Chat is a valid offline fallback given the near-identical accuracy
 
 ---
 
@@ -1011,4 +1146,4 @@ Example of a good interpretation (updated with real results):
 
 ---
 
-*This document covers Steps 3 and 4. Step 5 (Atlas-Chat LLM evaluation) results will be appended when available. When adding them, pay particular attention to: (1) whether Atlas-Chat matches or exceeds the fine-tuned encoder F1 on darija_ar, and (2) what the latency cost of LLM inference is compared to the 2–4ms GPU speed of the fine-tuned encoders.*
+*This document now covers Steps 3, 4, and 5. Key finding from Step 5: Atlas-Chat-2B zero-shot matches fine-tuned encoders on binary arabizi (0.978 vs 0.983, gap = 0.5 pts) but is far below them on 3-class darija_ar (0.727 vs 0.844) due to catastrophic neutral recall (32.8%). LLM inference is 45–75× slower than fine-tuned encoders on the same T4 GPU. Step 6 (self-annotated domaine-réel test set from real SRT files) is pending.*

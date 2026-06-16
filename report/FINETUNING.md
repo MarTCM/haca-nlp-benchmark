@@ -647,3 +647,89 @@ The result is written to `results/darijabert_darija_ar.json` and appended to `re
 | Eval languages | darija_ar | arabizi | darija_ar, msa | darija_ar, msa |
 | Baseline to beat | xlm-t 0.723 | xlm-t 0.762 | xlm-t 0.723 / camelbert 0.924 | xlm-t 0.723 |
 | GPU time (T4) | ~25 min | ~15 min | ~25 min | ~25 min |
+
+---
+
+## Step 5 — Atlas-Chat-2B zero-shot (cells 13–16)
+
+Atlas-Chat is not fine-tuned — it is a **causal language model** evaluated zero-shot. This section explains how it differs from the fine-tuned encoders above, walks through the new Kaggle cells, and summarises the results for comparison.
+
+### What makes Atlas-Chat different
+
+Fine-tuned encoders (Steps 1–4) follow this pattern:
+```
+Input text → tokeniser → BERT encoder → [CLS] vector → linear classification head → {neg, neu, pos}
+```
+The classification head is trained on labelled data. The model outputs probabilities directly.
+
+Atlas-Chat follows a completely different pattern:
+```
+Input text → prompt template → causal LM → generated tokens → regex parse → {neg, neu, pos}
+```
+There is no classification head. The model is asked to *write* the label as its next tokens. We parse the output with a regex looking for `positif|neutre|negatif`.
+
+**Practical consequence:** If the model generates anything other than one of those three words, it is a non-response (counted separately). The model cannot be batched efficiently — each `generate()` call is sequential.
+
+### The quantisation (4-bit NF4)
+
+Atlas-Chat-2B at full precision (fp32) would require ~6.4 GB just for weights (1.6B × 4 bytes). On a 16GB T4, that leaves no room for activations during generation.
+
+4-bit NF4 quantisation (via `bitsandbytes`) compresses the weights to ~0.5 bytes per parameter: 1.6B × 0.5 bytes ≈ **0.8 GB** for weights, leaving ample room. The quality loss from quantisation is small for generation tasks, especially when the task is as constrained as single-word classification.
+
+```python
+BitsAndBytesConfig(
+    load_in_4bit=True,
+    bnb_4bit_quant_type="nf4",           # NormalFloat4 — better than int4 for LLMs
+    bnb_4bit_use_double_quant=True,       # quantise the quantisation constants too
+    bnb_4bit_compute_dtype=torch.float16, # dequantise to fp16 for matrix ops
+)
+```
+
+### Kaggle notebook cells 13–16
+
+**Cell 13 — Verify bitsandbytes:**
+Checks that `bitsandbytes` is installed (it was already installed in cell 1). If it is missing (e.g., you started a fresh session without running cell 1), it installs it now. `accelerate` is also needed for `device_map="auto"`.
+
+**Cell 14 — Choose model size:**
+```python
+ATLAS_SIZE = "2b"  # or "9b"
+```
+The 2B model fits on T4 with ~4 GB VRAM. The 9B model requires ~10 GB — possible on T4 but leaves very little headroom. Use 2B unless you have a specific reason to test 9B.
+
+**Cell 15 — Run inference:**
+```python
+from atlas_chat import run_atlas
+run_atlas(ATLAS_SIZE)
+```
+This loads the model, runs a 5-sample warm-up per language, then times each `generate()` call individually for 1000 samples. Results are written to:
+- `results/atlas-chat-2b_darija_ar.json`
+- `results/atlas-chat-2b_arabizi.json`
+- `results/summary.csv` (appended)
+
+Expect ~60 minutes total for the 2B model (1000 × 2 languages × ~18 seconds per sample at ~185ms/utt).
+
+**Cell 16 — Show results:**
+Prints macro-F1, median latency, peak VRAM, and non-response rate for each language. Cross-check against the values below before downloading.
+
+### Results (2B model)
+
+| Language | Macro-F1 | Latency | Non-response | Verdict vs encoder |
+|---|---|---|---|---|
+| darija_ar | 0.727 | 186 ms | 0.5% | Encoder dominates (+11.7 pts for MARBERTv2) |
+| arabizi | 0.978 | 184 ms | 1.2% | Near-tie (gap = 0.5 pts vs DarijaBERT-arabizi) |
+
+The starkest finding: on 3-class darija_ar, Atlas-Chat's **neutral recall is 32.8%** (only 76 of 232 neutral tweets correctly identified). The LLM cannot reliably detect the absence of sentiment. On binary arabizi, where there is no neutral class, it excels.
+
+### LLM vs fine-tuned encoders — final comparison
+
+| | Fine-tuned encoder | Atlas-Chat-2B |
+|---|---|---|
+| Training required | Yes (~15–25 min on T4) | No |
+| Inference mode | Batched (pipeline) | Sequential (generate) |
+| Latency on T4 | 2–4 ms/utt | ~185 ms/utt |
+| darija_ar macro-F1 | 0.844 (MARBERTv2) | 0.727 |
+| arabizi macro-F1 | 0.983 (DarijaBERT-arabizi) | 0.978 |
+| Neutral F1 (darija_ar) | 0.751 (MARBERTv2) | 0.480 |
+| VRAM (T4) | 2.2–3.0 GB | ~4 GB (4-bit) |
+
+**Recommendation:** Use fine-tuned encoders for production. Atlas-Chat-2B is a useful reference point showing what zero-shot LLM performance looks like for Moroccan Arabic sentiment — and a fallback for arabizi if no GPU is available for fine-tuned serving.

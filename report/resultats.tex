@@ -1,0 +1,188 @@
+% Résultats du benchmark — version courte
+% Compiler avec pdflatex (2 passes) ou Overleaf
+\documentclass[11pt, a4paper]{article}
+
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[french]{babel}
+\usepackage[top=2cm, bottom=2cm, left=2.5cm, right=2.5cm]{geometry}
+\usepackage{booktabs}
+\usepackage[dvipsnames, table]{xcolor}
+\usepackage{parskip}
+\usepackage{lmodern}
+\usepackage{microtype}
+\usepackage{titlesec}
+\usepackage{hyperref}
+
+\definecolor{hacablue}{RGB}{0,70,127}
+\definecolor{goodgreen}{RGB}{0,150,80}
+\definecolor{llmblue}{RGB}{220,235,255}
+
+\titleformat{\section}{\large\bfseries\color{hacablue}}{\thesection.}{0.5em}{}[\vspace{-4pt}\rule{\linewidth}{0.4pt}]
+\titleformat{\subsection}{\normalsize\bfseries}{\thesubsection.}{0.4em}{}
+
+\setlength{\parindent}{0pt}
+
+% ────────────────────────────────────────────────────────────
+\begin{document}
+
+\begin{center}
+  {\Large\bfseries\color{hacablue} Benchmark IA multilangue — Résultats}\\[4pt]
+  {\normalsize HACA / DSI \quad|\quad Marwane ElBaraka \quad|\quad 16 juin 2026}
+\end{center}
+
+\vspace{2pt}\rule{\linewidth}{0.8pt}\vspace{6pt}
+
+% ────────────────────────────────────────────────────────────
+\section{Tableau synthétique}
+
+Huit modèles ont été évalués sur quatre langues (1\,000 exemples par langue,
+métrique : \textbf{macro-F1}). Lignes grisées : modèles prêts à l'emploi.
+Lignes blanches : modèles fine-tunés (GPU Kaggle T4).
+Lignes bleutées : LLM zéro-shot (4 bits, T4, inférence séquentielle).
+
+\vspace{4pt}
+\begin{center}
+\setlength{\tabcolsep}{7pt}
+\begin{tabular}{lccccr}
+\toprule
+\textbf{Modèle} & \textbf{Darija AR} & \textbf{Français} & \textbf{MSA} & \textbf{Arabizi} & \textbf{Params} \\
+\midrule
+\rowcolor{gray!12} xlm-t            & 0{,}723 & 0{,}772 & 0{,}813 & 0{,}762 & 278M \\
+\rowcolor{gray!12} camelbert-da     & 0{,}701 & —       & \cellcolor{goodgreen!25}\textbf{0{,}924} & — & 109M \\
+\rowcolor{gray!12} distilcamembert  & —       & \cellcolor{goodgreen!25}\textbf{0{,}949} & — & — & 68M \\
+\midrule
+DarijaBERT       & 0{,}775 & — & — & — & 147M \\
+DarijaBERT-arabizi & —     & — & — & \cellcolor{goodgreen!25}\textbf{0{,}983} & 171M \\
+MARBERTv2        & \cellcolor{goodgreen!25}\textbf{0{,}844} & — & 0{,}838 & — & 163M \\
+QARIB            & 0{,}827 & — & 0{,}812 & — & 135M \\
+\midrule
+\rowcolor{llmblue} Atlas-Chat-2B (LLM) & 0{,}727 & — & — & 0{,}978 & 1\,602M \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\vspace{2pt}
+{\small Cellules vertes = meilleur score par langue. Gris = prêts à l'emploi. Bleu = LLM zéro-shot.}
+
+% ────────────────────────────────────────────────────────────
+\section{Résultats par langue}
+
+\subsection{Darija marocain (écriture arabe)}
+
+MARBERTv2 fine-tuné atteint \textbf{0{,}844}, soit +12 points sur le meilleur
+modèle de base (xlm-t 0{,}723). Le gain provient surtout de la classe
+\textbf{neutre}, historiquement la plus difficile :
+
+\vspace{4pt}
+\begin{center}
+\begin{tabular}{lcccc}
+\toprule
+\textbf{Modèle} & \textbf{F1 négatif} & \textbf{F1 neutre} & \textbf{F1 positif} & \textbf{Macro-F1} \\
+\midrule
+xlm-t (base)          & 0{,}724 & 0{,}577 & 0{,}868 & 0{,}723 \\
+Atlas-Chat-2B (LLM)   & 0{,}789 & 0{,}480 & 0{,}911 & 0{,}727 \\
+DarijaBERT (FT)       & 0{,}743 & 0{,}690 & 0{,}891 & 0{,}775 \\
+QARIB (FT)            & 0{,}838 & 0{,}733 & 0{,}909 & 0{,}827 \\
+MARBERTv2 (FT)        & \textbf{0{,}854} & \textbf{0{,}751} & \textbf{0{,}927} & \textbf{0{,}844} \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\vspace{2pt}
+Le F1 neutre passe de 0{,}577 à \textbf{0{,}751} grâce au pré-entraînement
+de MARBERTv2 sur 1 milliard de mots couvrant 25 dialectes arabes (dont le marocain).
+Atlas-Chat, malgré 1{,}6 milliard de paramètres, ne dépasse pas xlm-t (0{,}727 vs 0{,}723) :
+sa classe neutre atteint seulement F1\,=\,0{,}480, rendant les encodeurs fine-tunés
+nettement préférables pour cette langue (écart de 11{,}7 points avec MARBERTv2).
+
+\subsection{Arabizi marocain}
+
+DarijaBERT-arabizi atteint \textbf{0{,}983} (taux d'erreur 1{,}5\,\%), le
+meilleur score du benchmark, entraîné en \textbf{3,4 minutes} sur Kaggle T4.
+Atlas-Chat-2B en zéro-shot atteint 0{,}978, à seulement \textbf{0,5 point} du meilleur encodeur.
+
+\vspace{4pt}
+\begin{center}
+\begin{tabular}{lcccr}
+\toprule
+\textbf{Modèle} & \textbf{F1 nég.} & \textbf{F1 pos.} & \textbf{Macro-F1} & \textbf{Non-rép.*} \\
+\midrule
+xlm-t (base)             & 0{,}780 & 0{,}745 & 0{,}762 & 31{,}2\,\% \\
+\rowcolor{llmblue}
+Atlas-Chat-2B (LLM)      & 0{,}966 & 0{,}990 & 0{,}978 & 1{,}2\,\% \\
+DarijaBERT-arabizi (FT)  & \textbf{0{,}978} & \textbf{0{,}989} & \textbf{0{,}983} & 0\,\% \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\vspace{2pt}
+{\small * xlm-t : prédictions «~neutre~» sur jeu binaire. Atlas-Chat : taux de non-réponse au prompt.}
+
+\vspace{2pt}
+xlm-t prédit «~neutre~» pour 31\,\% des entrées arabizi faute d'exposition à cette variété.
+Le LLM résout partiellement ce problème (1{,}2\,\% de non-réponses) et atteint un score proche
+de l'encodeur fine-tuné — exception notable dans ce benchmark où le LLM reste sinon très en retrait.
+
+\subsection{Français}
+
+distilcamembert (68M paramètres, prêt à l'emploi) obtient \textbf{0{,}949},
+soit 11× moins d'erreurs que xlm-t (20 vs 226 sur 1\,000). Aucun fine-tuning
+nécessaire pour cette langue.
+
+\subsection{Arabe standard (MSA)}
+
+camelbert-da (prêt à l'emploi) reste imbattu à \textbf{0{,}924}.
+Les modèles fine-tunés (MARBERTv2 0{,}838, QARIB 0{,}812) sont pénalisés
+car leur tête de classification a été entraînée en 3 classes (neg/neu/pos) sur
+le darija : appliquée sur le jeu MSA binaire, la classe neutre absorbe
+18--20\,\% des prédictions, réduisant le rappel.
+
+% ────────────────────────────────────────────────────────────
+\section{Latence}
+
+\begin{center}
+\begin{tabular}{llrr}
+\toprule
+\textbf{Catégorie} & \textbf{Matériel} & \textbf{Latence (ms/utt)} & \textbf{Émission 30 min\,*} \\
+\midrule
+Modèles prêts à l'emploi & CPU & 90 -- 1\,006 & 5 -- 60 min \\
+Modèles fine-tunés       & GPU T4 & 2{,}5 -- 4{,}4 & \textbf{9 -- 16 s} \\
+\rowcolor{llmblue}
+Atlas-Chat-2B (LLM)      & GPU T4 (séq.) & 184 -- 186 & $\approx$ 11 min \\
+\bottomrule
+\multicolumn{4}{l}{\small * ≈ 3\,600 sous-titres à 2 cues/seconde. LLM : inférence séquentielle (generate), non batchée.}
+\end{tabular}
+\end{center}
+
+% ────────────────────────────────────────────────────────────
+\section{Recommandations}
+
+\begin{center}
+\begin{tabular}{lll}
+\toprule
+\textbf{Langue} & \textbf{Modèle recommandé} & \textbf{Macro-F1} \\
+\midrule
+Darija marocain (arabe)  & MARBERTv2 fine-tuné        & 0{,}844 \\
+Arabizi marocain         & DarijaBERT-arabizi fine-tuné & 0{,}983 \\
+Arabe standard (MSA)     & camelbert-da (prêt à l'emploi) & 0{,}924 \\
+Français                 & distilcamembert (prêt à l'emploi) & 0{,}949 \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\textbf{Enseignement principal :} dans tous les cas, un petit modèle
+spécialisé dépasse un grand modèle généraliste. Les quatre fine-tunings
+ont été réalisés gratuitement sur Kaggle, chacun en moins de 12 minutes.
+
+\medskip
+\textbf{Comparaison LLM vs encodeurs (Atlas-Chat-2B) :}
+Le LLM zéro-shot atteint 0{,}978 sur l'arabizi (écart de 0{,}5 point avec l'encodeur)
+mais seulement 0{,}727 sur le darija 3 classes — sa classe neutre (F1\,=\,0{,}48) est
+trop faible pour un usage production. De plus, sa latence ($\approx$\,185\,ms/utt sur GPU
+en séquentiel) est \textbf{70 fois plus lente} que les encodeurs fine-tunés (2--4\,ms).
+\textbf{Règle de décision :} préférer l'encodeur fine-tuné si son macro-F1 $\geq$ 0{,}75
+\emph{ou} si l'écart LLM--encodeur est $<$ 5 points. Les deux conditions sont remplies
+ici pour le darija ; seule la seconde pour l'arabizi — l'encodeur reste recommandé dans les deux cas.
+
+\end{document}
