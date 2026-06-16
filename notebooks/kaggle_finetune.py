@@ -166,171 +166,66 @@ import shutil
 ckpt_src = os.path.join(REPO, "checkpoints", MODEL_KEY)
 zip_dest = os.path.join(WORK, f"checkpoint_{MODEL_KEY}")
 
-from IPython.display import FileLink, display
-
 if os.path.isdir(ckpt_src):
     shutil.make_archive(zip_dest, "zip", ckpt_src)
     zip_path = zip_dest + ".zip"
     size_mb = os.path.getsize(zip_path) / 1024**2
-    print(f"Checkpoint zipped ({size_mb:.0f} MB)")
-    # FileLink needs path relative to /kaggle/working/ — strip that prefix
-    display(FileLink(zip_path.replace("/kaggle/working/", ""),
-                     result_html_prefix=f"⬇ checkpoint_{MODEL_KEY}.zip  "))
+    print(f"\nCheckpoint zipped: {zip_path}  ({size_mb:.0f} MB)")
+    print("Download from Kaggle Output tab, or add as a Kaggle dataset.")
 else:
     print("[WARN] Checkpoint directory not found — fine-tuning may have failed.")
 
-# %% 10 — Upload results + checkpoint back to GitHub
-#
-# Results JSON  → committed and pushed directly to the repo (small text file, ~10 KB)
-# Checkpoint    → uploaded to a GitHub Release asset (supports files up to 2 GB)
-#
-# Requirements:
-#   - If repo is PRIVATE: add a Kaggle secret named GITHUB_TOKEN with your
-#     GitHub personal access token (Settings → Secrets in the Kaggle notebook UI).
-#   - If repo is PUBLIC: no secret needed; git push works without auth over HTTPS
-#     once the remote was already set in cell 2 with the token embedded in the URL.
-#
-# One-time setup on GitHub (do this before running):
-#   Your repo on GitHub → Releases → "Draft a new release" is NOT required —
-#   this cell creates the release automatically via the API.
+# %% 10 — Clickable download links for this model's outputs
+# Uses IPython FileLink — creates a live clickable link in the cell output.
+# Path must be relative to /kaggle/working/ (FileLink strips the prefix for you).
 
-import glob, json, requests, shutil
-from kaggle_secrets import UserSecretsClient
+import glob
+from IPython.display import display, FileLink
 
-# ── Config — change GITHUB_OWNER/GITHUB_REPO_NAME to match your repo ──────
-GITHUB_OWNER     = "MarTCM"
-GITHUB_REPO_NAME = "haca-nlp-benchmark"
-# ──────────────────────────────────────────────────────────────────────────
+WORK = "/kaggle/working"
 
-# Grab the GitHub token from Kaggle Secrets (optional for public repos)
-try:
-    gh_token = UserSecretsClient().get_secret("GITHUB_TOKEN")
-    AUTH_HEADERS = {
-        "Authorization": f"token {gh_token}",
-        "Accept": "application/vnd.github.v3+json",
-    }
-    # Re-embed token in remote URL so git push works without interactive prompt
-    remote = subprocess.check_output(
-        ["git", "remote", "get-url", "origin"], cwd=REPO
-    ).decode().strip()
-    if "@" not in remote:   # token not yet in URL
-        authed = remote.replace("https://", f"https://{gh_token}@")
-        subprocess.run(["git", "remote", "set-url", "origin", authed], cwd=REPO)
-    print("GitHub token loaded from Kaggle Secrets.")
-except Exception:
-    AUTH_HEADERS = {"Accept": "application/vnd.github.v3+json"}
-    print("No GITHUB_TOKEN secret found — assuming public repo.")
+print(f"=== Download links for: {MODEL_KEY} ===\n")
 
-# ── Part 1: push results JSON(s) to the repo ──────────────────────────────
-subprocess.run(["git", "config", "user.email", "kaggle-bot@haca.ma"], cwd=REPO, check=True)
-subprocess.run(["git", "config", "user.name",  "Kaggle Training Bot"],  cwd=REPO, check=True)
-
-files_to_stage = (
-    glob.glob(f"{REPO}/results/{MODEL_KEY}_*.json")
-    + [f"{REPO}/results/summary.csv"]
-)
-
-for f in files_to_stage:
-    if os.path.exists(f):
-        subprocess.run(["git", "add", f], cwd=REPO, check=True)
-
-staged = subprocess.check_output(
-    ["git", "diff", "--cached", "--name-only"], cwd=REPO
-).decode().strip()
-
-if staged:
-    subprocess.run(
-        ["git", "commit", "-m", f"results: {MODEL_KEY} fine-tune evaluation"],
-        cwd=REPO, check=True,
-    )
-    subprocess.run(["git", "push"], cwd=REPO, check=True)
-    print(f"\nResults pushed to GitHub:\n{staged}")
+# ── Checkpoint zip ─────────────────────────────────────────────────────────
+zip_path = os.path.join(WORK, f"checkpoint_{MODEL_KEY}.zip")
+if os.path.exists(zip_path):
+    size_mb = os.path.getsize(zip_path) / 1024 ** 2
+    rel = os.path.relpath(zip_path, WORK)          # strip /kaggle/working/ prefix
+    display(FileLink(rel, result_html_prefix=f"<b>Checkpoint zip</b> ({size_mb:.0f} MB) — "))
 else:
-    print("No new result files to push (already up to date).")
+    print(f"[WARN] Checkpoint zip not found — run cell 9 first.")
 
-# ── Part 2: zip checkpoint ─────────────────────────────────────────────────
-CKPT_DIR = f"{REPO}/checkpoints/{MODEL_KEY}"
-ZIP_PATH = f"/kaggle/working/checkpoint_{MODEL_KEY}.zip"
+print()
 
-if not os.path.isdir(CKPT_DIR):
-    raise FileNotFoundError(f"Checkpoint directory not found: {CKPT_DIR}")
+# ── Results JSON files ─────────────────────────────────────────────────────
+results_dir = os.path.join(REPO, "results")
+json_files = sorted(glob.glob(os.path.join(results_dir, f"{MODEL_KEY}_*.json")))
+if json_files:
+    for jf in json_files:
+        rel = os.path.relpath(jf, WORK)
+        display(FileLink(rel, result_html_prefix=f"<b>Results</b> ({os.path.basename(jf)}) — "))
+else:
+    print(f"[WARN] No results JSON found for '{MODEL_KEY}' — run cell 7 first.")
 
-if not os.path.exists(ZIP_PATH):
-    print(f"Zipping {CKPT_DIR} ...")
-    shutil.make_archive(ZIP_PATH.replace(".zip", ""), "zip", CKPT_DIR)
+# %% 11 — Free space: delete the checkpoint zip after downloading
+# Run this ONLY after you have confirmed the download completed.
+# The unzipped checkpoint inside benchmark/checkpoints/ is NOT deleted here —
+# only the zip (the large copy created for downloading).
 
-zip_size_mb = os.path.getsize(ZIP_PATH) / 1024 ** 2
-print(f"Checkpoint zip: {ZIP_PATH}  ({zip_size_mb:.0f} MB)")
+zip_path = os.path.join(WORK, f"checkpoint_{MODEL_KEY}.zip")
 
-# ── Part 3: create a GitHub Release and upload the zip ────────────────────
-TAG = f"checkpoint-{MODEL_KEY}"
-API  = f"https://api.github.com/repos/{GITHUB_OWNER}/{GITHUB_REPO_NAME}"
+if os.path.exists(zip_path):
+    size_mb = os.path.getsize(zip_path) / 1024 ** 2
+    os.remove(zip_path)
+    print(f"Deleted: {zip_path}")
+    print(f"Freed  : {size_mb:.0f} MB")
+else:
+    print(f"Nothing to delete — {zip_path} does not exist.")
 
-# Delete existing release with same tag if present (so re-runs are idempotent)
-existing = requests.get(f"{API}/releases/tags/{TAG}", headers=AUTH_HEADERS)
-if existing.status_code == 200:
-    rel_id = existing.json()["id"]
-    requests.delete(f"{API}/releases/{rel_id}", headers=AUTH_HEADERS)
-    requests.delete(f"{API}/git/refs/tags/{TAG}", headers=AUTH_HEADERS)
-    print(f"Deleted existing release '{TAG}' to re-upload.")
-
-# Create the release
-release_payload = {
-    "tag_name":         TAG,
-    "name":             f"Checkpoint — {MODEL_KEY}",
-    "body":             (
-        f"Fine-tuned checkpoint for `{MODEL_KEY}`.\n\n"
-        f"Unzip into `checkpoints/{MODEL_KEY}/` in the local repo.\n\n"
-        f"Results JSON is committed directly to `results/`."
-    ),
-    "draft":      False,
-    "prerelease": True,    # marks it as a pre-release so it doesn't clutter the main releases page
-}
-r = requests.post(f"{API}/releases", headers=AUTH_HEADERS, json=release_payload)
-r.raise_for_status()
-release = r.json()
-print(f"Release created: {release['html_url']}")
-
-# Upload the zip as a release asset
-upload_url = (
-    release["upload_url"].split("{")[0]          # strip the {?name,label} template
-    + f"?name=checkpoint_{MODEL_KEY}.zip"
-)
-print(f"Uploading {zip_size_mb:.0f} MB checkpoint — this may take a minute ...")
-with open(ZIP_PATH, "rb") as fh:
-    up = requests.post(
-        upload_url,
-        headers={**AUTH_HEADERS, "Content-Type": "application/zip"},
-        data=fh,
-        timeout=600,
-    )
-up.raise_for_status()
-download_url = up.json()["browser_download_url"]
-print(f"\nCheckpoint uploaded successfully.")
-print(f"GitHub Release URL : {release['html_url']}")
-print(f"Direct download URL: {download_url}")
-
-# ── Clickable links in the notebook output ────────────────────────────────
-# FileLink requires a path relative to /kaggle/working/ (no leading slash prefix)
-from IPython.display import FileLink, display
-
-KAGGLE_WORK = "/kaggle/working/"
-
-print("\n── Clickable local links ──")
-
-# Checkpoint zip
-zip_rel = ZIP_PATH.replace(KAGGLE_WORK, "")
-display(FileLink(zip_rel, result_html_prefix=f"⬇ checkpoint_{MODEL_KEY}.zip  "))
-
-# Results JSONs and summary CSV
-print("\nResult files:")
-for f in sorted(glob.glob(f"{REPO}/results/{MODEL_KEY}_*.json") + [f"{REPO}/results/summary.csv"]):
-    if os.path.exists(f):
-        rel = f.replace(KAGGLE_WORK, "")
-        display(FileLink(rel, result_html_prefix=f"⬇ {os.path.basename(f)}  "))
-
-# %% 11 — (Optional) Run all four models in one session (~2 h on T4)
+# %% 12 — (Optional) Run all four models in sequence
+# Uncomment to run everything in one long session (~2 h on T4).
 # Only do this if you have enough quota and the session won't time out.
+# After the loop, run cells 10 and 11 once per MODEL_KEY to download and clean up.
 
 # for key in ["darijabert", "darijabert-arabizi", "marbertv2", "qarib"]:
 #     print(f"\n{'='*60}")
