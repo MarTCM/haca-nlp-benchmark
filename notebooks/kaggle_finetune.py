@@ -166,12 +166,16 @@ import shutil
 ckpt_src = os.path.join(REPO, "checkpoints", MODEL_KEY)
 zip_dest = os.path.join(WORK, f"checkpoint_{MODEL_KEY}")
 
+from IPython.display import FileLink, display
+
 if os.path.isdir(ckpt_src):
     shutil.make_archive(zip_dest, "zip", ckpt_src)
     zip_path = zip_dest + ".zip"
     size_mb = os.path.getsize(zip_path) / 1024**2
-    print(f"\nCheckpoint zipped: {zip_path}  ({size_mb:.0f} MB)")
-    print("Download from Kaggle Output tab, or add as a Kaggle dataset.")
+    print(f"Checkpoint zipped ({size_mb:.0f} MB)")
+    # FileLink needs path relative to /kaggle/working/ — strip that prefix
+    display(FileLink(zip_path.replace("/kaggle/working/", ""),
+                     result_html_prefix=f"⬇ checkpoint_{MODEL_KEY}.zip  "))
 else:
     print("[WARN] Checkpoint directory not found — fine-tuning may have failed.")
 
@@ -301,9 +305,29 @@ with open(ZIP_PATH, "rb") as fh:
         timeout=600,
     )
 up.raise_for_status()
+download_url = up.json()["browser_download_url"]
 print(f"\nCheckpoint uploaded successfully.")
-print(f"Download URL: {up.json()['browser_download_url']}")
-print(f"\nTo download locally:\n  curl -L '{up.json()['browser_download_url']}' -o checkpoint_{MODEL_KEY}.zip")
+print(f"GitHub Release URL : {release['html_url']}")
+print(f"Direct download URL: {download_url}")
+
+# ── Clickable links in the notebook output ────────────────────────────────
+# FileLink requires a path relative to /kaggle/working/ (no leading slash prefix)
+from IPython.display import FileLink, display
+
+KAGGLE_WORK = "/kaggle/working/"
+
+print("\n── Clickable local links ──")
+
+# Checkpoint zip
+zip_rel = ZIP_PATH.replace(KAGGLE_WORK, "")
+display(FileLink(zip_rel, result_html_prefix=f"⬇ checkpoint_{MODEL_KEY}.zip  "))
+
+# Results JSONs and summary CSV
+print("\nResult files:")
+for f in sorted(glob.glob(f"{REPO}/results/{MODEL_KEY}_*.json") + [f"{REPO}/results/summary.csv"]):
+    if os.path.exists(f):
+        rel = f.replace(KAGGLE_WORK, "")
+        display(FileLink(rel, result_html_prefix=f"⬇ {os.path.basename(f)}  "))
 
 # %% 11 — (Optional) Run all four models in one session (~2 h on T4)
 # Only do this if you have enough quota and the session won't time out.
