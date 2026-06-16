@@ -1,0 +1,63 @@
+{
+  "model": "atlas-chat-9b",
+  "lang": "arabizi",
+  "n": 1000,
+  "macro_f1": 0.7536,
+  "latency_ms_per_utt": 451.349,
+  "peak_vram_mb": 2538.9,
+  "n_params": 5079907840,
+  "classes_evaluated": [
+    "neg",
+    "pos"
+  ],
+  "classification_report": {
+    "neg": {
+      "precision": 0.9833887043189369,
+      "recall": 0.8629737609329446,
+      "f1-score": 0.9192546583850931,
+      "support": 343.0
+    },
+    "pos": {
+      "precision": 0.9963636363636363,
+      "recall": 0.4170471841704718,
+      "f1-score": 0.5879828326180258,
+      "support": 657.0
+    },
+    "micro avg": {
+      "precision": 0.9895833333333334,
+      "recall": 0.57,
+      "f1-score": 0.7233502538071066,
+      "support": 1000.0
+    },
+    "macro avg": {
+      "precision": 0.9898761703412866,
+      "recall": 0.6400104725517082,
+      "f1-score": 0.7536187455015595,
+      "support": 1000.0
+    },
+    "weighted avg": {
+      "precision": 0.9919132346723045,
+      "recall": 0.57,
+      "f1-score": 0.7016090688561298,
+      "support": 1000.0
+    }
+  },
+  "confusion_matrix": [
+    [
+      296,
+      1
+    ],
+    [
+      5,
+      274
+    ]
+  ],
+  "confusion_matrix_labels": [
+    "neg",
+    "pos"
+  ],
+  "non_response_rate": 0.0,
+  "non_response_count": 0,
+  "model_size": "9b",
+  "quantization": "4bit-nf4"
+}

@@ -720,16 +720,31 @@ Prints macro-F1, median latency, peak VRAM, and non-response rate for each langu
 
 The starkest finding: on 3-class darija_ar, Atlas-Chat's **neutral recall is 32.8%** (only 76 of 232 neutral tweets correctly identified). The LLM cannot reliably detect the absence of sentiment. On binary arabizi, where there is no neutral class, it excels.
 
+### Results (9B model) — scale reversal
+
+| Language | Macro-F1 | Latency | Non-response | Neutral abstention | Verdict vs encoder |
+|---|---|---|---|---|---|
+| darija_ar | **0.833** | 451 ms | 0.0% | — | Gap = 1.1 pts vs MARBERTv2 |
+| arabizi | 0.754 | 451 ms | 0.0% | **42.4%** (424/1000) | Worse than xlm-t baseline |
+
+The 9B model inverts the 2B pattern entirely:
+
+- **darija_ar:** Neutral F1 jumps from 0.480 (2B) to **0.746** (9B), nearly matching MARBERTv2's 0.751. The 9B reaches 0.833 macro-F1 — only 1.1 points below the best fine-tuned encoder, with no training whatsoever.
+- **arabizi:** The same improved neutral calibration becomes a liability. The 9B predicts "neutre" for 424 of 1000 arabizi inputs despite this being a binary test set. Positive recall collapses to 0.417. The model scores 0.754 — worse than xlm-t (0.762).
+
+The non-response rate is 0.0% for the 9B: it always outputs one of the three valid labels. The abstention is not a parsing failure — the model genuinely predicts "neutre" for ambiguous Arabizi content that the 2B rounds to a polar class.
+
 ### LLM vs fine-tuned encoders — final comparison
 
-| | Fine-tuned encoder | Atlas-Chat-2B |
-|---|---|---|
-| Training required | Yes (~15–25 min on T4) | No |
-| Inference mode | Batched (pipeline) | Sequential (generate) |
-| Latency on T4 | 2–4 ms/utt | ~185 ms/utt |
-| darija_ar macro-F1 | 0.844 (MARBERTv2) | 0.727 |
-| arabizi macro-F1 | 0.983 (DarijaBERT-arabizi) | 0.978 |
-| Neutral F1 (darija_ar) | 0.751 (MARBERTv2) | 0.480 |
-| VRAM (T4) | 2.2–3.0 GB | ~4 GB (4-bit) |
+| | Fine-tuned encoder | Atlas-Chat-2B | Atlas-Chat-9B |
+|---|---|---|---|
+| Training required | Yes (~15–25 min on T4) | No | No |
+| Inference mode | Batched (pipeline) | Sequential (generate) | Sequential (generate) |
+| Latency on T4 | 2–4 ms/utt | ~185 ms/utt | ~451 ms/utt |
+| darija_ar macro-F1 | 0.844 (MARBERTv2) | 0.727 | **0.833** |
+| arabizi macro-F1 | 0.983 (DarijaBERT-arabizi) | **0.978** | 0.754 |
+| Neutral F1 (darija_ar) | 0.751 (MARBERTv2) | 0.480 | **0.746** |
+| Arabizi neutral abstention | 0% | 1.2% | **42.4%** |
+| VRAM (T4) | 2.2–3.0 GB | ~4 GB (4-bit) | ~10 GB (4-bit) |
 
-**Recommendation:** Use fine-tuned encoders for production. Atlas-Chat-2B is a useful reference point showing what zero-shot LLM performance looks like for Moroccan Arabic sentiment — and a fallback for arabizi if no GPU is available for fine-tuned serving.
+**Key insight:** The right LLM size depends on the task. Use 2B for binary arabizi; use 9B for 3-class Darija. In both cases, the fine-tuned encoder is still recommended for production — it is more accurate and 45–180× faster. The LLM sizes are useful as zero-shot baselines and for deployment contexts where no GPU is available for fine-tuned inference.

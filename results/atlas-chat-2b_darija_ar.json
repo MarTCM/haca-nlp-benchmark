@@ -1,0 +1,73 @@
+{
+  "model": "atlas-chat-2b",
+  "lang": "darija_ar",
+  "n": 1000,
+  "macro_f1": 0.7265,
+  "latency_ms_per_utt": 186.379,
+  "peak_vram_mb": 0.0,
+  "n_params": 1602203904,
+  "classes_evaluated": [
+    "neg",
+    "neu",
+    "pos"
+  ],
+  "classification_report": {
+    "neg": {
+      "precision": 0.6749116607773852,
+      "recall": 0.9502487562189055,
+      "f1-score": 0.7892561983471075,
+      "support": 201.0
+    },
+    "neu": {
+      "precision": 0.8941176470588236,
+      "recall": 0.3275862068965517,
+      "f1-score": 0.4794952681388013,
+      "support": 232.0
+    },
+    "pos": {
+      "precision": 0.8639240506329114,
+      "recall": 0.9629629629629629,
+      "f1-score": 0.9107589658048374,
+      "support": 567.0
+    },
+    "accuracy": 0.813,
+    "macro avg": {
+      "precision": 0.81098445282304,
+      "recall": 0.74693264202614,
+      "f1-score": 0.7265034774302487,
+      "support": 1000.0
+    },
+    "weighted avg": {
+      "precision": 0.8329374746427622,
+      "recall": 0.813,
+      "f1-score": 0.7862837316873134,
+      "support": 1000.0
+    }
+  },
+  "confusion_matrix": [
+    [
+      191,
+      0,
+      10
+    ],
+    [
+      80,
+      76,
+      76
+    ],
+    [
+      12,
+      9,
+      546
+    ]
+  ],
+  "confusion_matrix_labels": [
+    "neg",
+    "neu",
+    "pos"
+  ],
+  "non_response_rate": 0.005,
+  "non_response_count": 5,
+  "model_size": "2b",
+  "quantization": "4bit-nf4"
+}
