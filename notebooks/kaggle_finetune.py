@@ -159,60 +159,61 @@ for fname in sorted(os.listdir(RESULTS)):
         print(f"  VRAM     : {d['peak_vram_mb']} MB")
 
 # %% 9 — Package checkpoints for download
-# Zip the checkpoint directory so it appears as a single file in Kaggle Output.
+# Zip the checkpoint directory.
+# Saved relative to CWD (= /kaggle/working/benchmark/) so FileLink can find it.
 
 import shutil
 
-ckpt_src = os.path.join(REPO, "checkpoints", MODEL_KEY)
-zip_dest = os.path.join(WORK, f"checkpoint_{MODEL_KEY}")
+ckpt_src  = os.path.join(REPO, "checkpoints", MODEL_KEY)
+zip_name  = f"checkpoint_{MODEL_KEY}"          # no path — lands in CWD = REPO
+zip_final = os.path.join(REPO, zip_name + ".zip")
 
 if os.path.isdir(ckpt_src):
-    shutil.make_archive(zip_dest, "zip", ckpt_src)
-    zip_path = zip_dest + ".zip"
-    size_mb = os.path.getsize(zip_path) / 1024**2
-    print(f"\nCheckpoint zipped: {zip_path}  ({size_mb:.0f} MB)")
-    print("Download from Kaggle Output tab, or add as a Kaggle dataset.")
+    shutil.make_archive(zip_name, "zip", ckpt_src)   # creates ./<zip_name>.zip in CWD
+    size_mb = os.path.getsize(zip_final) / 1024 ** 2
+    print(f"Checkpoint zipped : {zip_final}  ({size_mb:.0f} MB)")
+    print("Run cell 10 for a clickable download link.")
 else:
     print("[WARN] Checkpoint directory not found — fine-tuning may have failed.")
 
 # %% 10 — Clickable download links for this model's outputs
-# Uses IPython FileLink — creates a live clickable link in the cell output.
-# Path must be relative to /kaggle/working/ (FileLink strips the prefix for you).
+# FileLink resolves paths relative to CWD (= /kaggle/working/benchmark/ after cell 2).
+# All files are either IN that directory or addressed with os.path.relpath(f, CWD).
 
 import glob
 from IPython.display import display, FileLink
 
-WORK = "/kaggle/working"
+CWD = os.getcwd()   # /kaggle/working/benchmark
 
 print(f"=== Download links for: {MODEL_KEY} ===\n")
 
-# ── Checkpoint zip ─────────────────────────────────────────────────────────
-zip_path = os.path.join(WORK, f"checkpoint_{MODEL_KEY}.zip")
+# ── Checkpoint zip (saved into CWD by cell 9) ─────────────────────────────
+zip_path = os.path.join(CWD, f"checkpoint_{MODEL_KEY}.zip")
 if os.path.exists(zip_path):
     size_mb = os.path.getsize(zip_path) / 1024 ** 2
-    rel = os.path.relpath(zip_path, WORK)          # strip /kaggle/working/ prefix
+    rel = os.path.relpath(zip_path, CWD)   # just "checkpoint_darijabert.zip"
     display(FileLink(rel, result_html_prefix=f"<b>Checkpoint zip</b> ({size_mb:.0f} MB) — "))
 else:
-    print(f"[WARN] Checkpoint zip not found — run cell 9 first.")
+    print(f"[WARN] Checkpoint zip not found at {zip_path} — run cell 9 first.")
 
 print()
 
 # ── Results JSON files ─────────────────────────────────────────────────────
 results_dir = os.path.join(REPO, "results")
-json_files = sorted(glob.glob(os.path.join(results_dir, f"{MODEL_KEY}_*.json")))
+json_files  = sorted(glob.glob(os.path.join(results_dir, f"{MODEL_KEY}_*.json")))
 if json_files:
     for jf in json_files:
-        rel = os.path.relpath(jf, WORK)
+        rel = os.path.relpath(jf, CWD)    # e.g. "results/darijabert_darija_ar.json"
         display(FileLink(rel, result_html_prefix=f"<b>Results</b> ({os.path.basename(jf)}) — "))
 else:
     print(f"[WARN] No results JSON found for '{MODEL_KEY}' — run cell 7 first.")
 
 # %% 11 — Free space: delete the checkpoint zip after downloading
-# Run this ONLY after you have confirmed the download completed.
-# The unzipped checkpoint inside benchmark/checkpoints/ is NOT deleted here —
-# only the zip (the large copy created for downloading).
+# Run ONLY after confirming the download completed.
+# The unzipped weights in benchmark/checkpoints/<model>/ are NOT touched —
+# only the zip copy created for downloading is removed.
 
-zip_path = os.path.join(WORK, f"checkpoint_{MODEL_KEY}.zip")
+zip_path = os.path.join(os.getcwd(), f"checkpoint_{MODEL_KEY}.zip")
 
 if os.path.exists(zip_path):
     size_mb = os.path.getsize(zip_path) / 1024 ** 2
