@@ -1,0 +1,674 @@
+% ============================================================
+%  Rapport d'avancement — Benchmark IA multilangue
+%  HACA / Direction des Systèmes d'Information
+%  Auteur : Marwane ElBaraka
+%  Date   : 16 juin 2026
+%  Compiler with: pdflatex (twice) or upload to Overleaf
+% ============================================================
+\documentclass[12pt, a4paper]{article}
+
+% ---------- Encodage & langue ----------
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[french]{babel}
+
+% ---------- Mise en page ----------
+\usepackage[top=2.5cm, bottom=2.5cm, left=2.8cm, right=2.8cm]{geometry}
+\usepackage{setspace}
+\setstretch{1.15}
+\usepackage{parskip}          % espace entre paragraphes, pas d'indentation
+\setlength{\parindent}{0pt}
+
+% ---------- Typographie ----------
+\usepackage{lmodern}
+\usepackage{microtype}
+
+% ---------- Couleurs & boîtes ----------
+\usepackage[dvipsnames, table]{xcolor}
+\definecolor{hacablue}{RGB}{0, 70, 127}
+\definecolor{lightgray}{RGB}{245, 245, 245}
+\definecolor{darkgray}{RGB}{80, 80, 80}
+\definecolor{goodgreen}{RGB}{0, 150, 80}
+\definecolor{warnorange}{RGB}{220, 100, 0}
+
+% ---------- Tableaux ----------
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{tabularx}
+\usepackage{multirow}
+\usepackage{colortbl}
+
+% ---------- Graphiques ----------
+\usepackage{graphicx}
+\usepackage{float}
+\usepackage{caption}
+\captionsetup{font=small, labelfont=bf, skip=6pt}
+
+% ---------- Listes ----------
+\usepackage{enumitem}
+\setlist[itemize]{noitemsep, topsep=3pt}
+\setlist[enumerate]{noitemsep, topsep=3pt}
+
+% ---------- Code ----------
+\usepackage{listings}
+\lstset{
+  basicstyle=\ttfamily\footnotesize,
+  backgroundcolor=\color{lightgray},
+  frame=single, framerule=0.4pt,
+  breaklines=true, columns=flexible
+}
+
+% ---------- Liens ----------
+\usepackage[hidelinks, colorlinks=true,
+            linkcolor=hacablue, urlcolor=hacablue]{hyperref}
+
+% ---------- En-tête / pied de page ----------
+\usepackage{fancyhdr}
+\pagestyle{fancy}
+\fancyhf{}
+\fancyhead[L]{\small\textcolor{darkgray}{Rapport d'avancement — Benchmark IA multilangue}}
+\fancyhead[R]{\small\textcolor{darkgray}{HACA / DSI — \the\year}}
+\fancyfoot[C]{\small\thepage}
+\renewcommand{\headrulewidth}{0.4pt}
+
+% ---------- Titre section coloré ----------
+\usepackage{titlesec}
+\titleformat{\section}
+  {\large\bfseries\color{hacablue}}{\thesection.}{0.6em}{}[\vspace{-2pt}\rule{\linewidth}{0.5pt}]
+\titleformat{\subsection}
+  {\normalsize\bfseries\color{hacablue!80!black}}{\thesubsection.}{0.5em}{}
+\titleformat{\subsubsection}
+  {\normalsize\itshape\color{darkgray}}{\thesubsubsection.}{0.4em}{}
+
+% ---------- Boîtes info ----------
+\usepackage{tcolorbox}
+\tcbuselibrary{skins, breakable}
+\newtcolorbox{infobox}[1][]{
+  colback=hacablue!5, colframe=hacablue!60,
+  fonttitle=\bfseries\small, title=#1,
+  boxrule=0.5pt, arc=3pt
+}
+\newtcolorbox{resultbox}{
+  colback=goodgreen!7, colframe=goodgreen!50,
+  boxrule=0.5pt, arc=3pt
+}
+
+% ============================================================
+\begin{document}
+
+% -------- PAGE DE GARDE --------
+\begin{titlepage}
+  \centering
+  \vspace*{1.5cm}
+
+  {\LARGE\bfseries\color{hacablue}
+    Rapport d'avancement\\[0.4em]
+    \large Benchmark de modèles d'IA pour l'analyse de tonalité\\
+    dans les médias audiovisuels marocains
+  }\par
+
+  \vspace{1.2cm}
+  \rule{0.6\linewidth}{1pt}\par
+  \vspace{0.6cm}
+
+  {\large
+    \textbf{Stage d'initiation} — Direction des Systèmes d'Information\\[0.3em]
+    \textbf{Organisation :} Haute Autorité de la Communication Audiovisuelle (HACA)\\[0.3em]
+    \textbf{Stagiaire :} Marwane ElBaraka\\[0.3em]
+    \textbf{Date :} 16 juin 2026
+  }\par
+
+  \vspace{1.2cm}
+  \rule{0.6\linewidth}{1pt}\par
+  \vspace{1.5cm}
+
+  \begin{infobox}[Résumé exécutif]
+    Ce rapport présente l'avancement d'un benchmark comparatif de sept modèles
+    de traitement automatique du langage naturel (TALN) pour la classification
+    de tonalité (positif / neutre / négatif) sur des contenus audiovisuels en
+    quatre langues : darija marocain (écriture arabe), arabizi marocain (écriture
+    latine), arabe standard moderne et français. \textbf{Quatre étapes sur sept
+    sont complètes.} Les modèles fine-tunés dépassent les modèles génériques sur
+    toutes les langues cibles, avec un macro-F1 maximal de \textbf{0{,}983} pour
+    l'arabizi et \textbf{0{,}844} pour le darija.
+  \end{infobox}
+
+  \vfill
+  {\small\textcolor{darkgray}{Document confidentiel — usage interne HACA}}
+\end{titlepage}
+
+% -------- TABLE DES MATIÈRES --------
+\tableofcontents
+\newpage
+
+% ============================================================
+\section{Contexte et objectifs}
+% ============================================================
+
+\subsection{Présentation de la HACA}
+
+La Haute Autorité de la Communication Audiovisuelle (HACA) est l'autorité
+marocaine de régulation du secteur audiovisuel, créée en 2002. Elle est
+chargée de veiller au respect du pluralisme, de la déontologie et des
+obligations légales des opérateurs de radio et de télévision, ainsi
+qu'accompagner la transformation numérique du secteur.
+
+La Direction des Systèmes d'Information (DSI) est l'entité responsable
+du développement et de la maintenance des outils informatiques internes.
+Elle développe notamment des plateformes d'échange avec les opérateurs
+audiovisuels (\textit{HACA Bridges}) et des solutions logicielles
+commercialisées auprès d'autres régulateurs africains (\textit{HMS —
+HACA Media Solutions}).
+
+\subsection{Problématique}
+
+Le suivi de la tonalité éditoriale des contenus diffusés constitue une
+mission clé de toute autorité de régulation audiovisuelle. Les contenus
+marocains sont produits dans au moins \textbf{quatre variétés linguistiques} :
+
+\begin{itemize}
+  \item \textbf{Arabe standard moderne (MSA)} — journaux télévisés, débats officiels
+  \item \textbf{Darija marocain en écriture arabe} — programmes de divertissement, réseaux sociaux
+  \item \textbf{Arabizi marocain (écriture latine)} — commentaires YouTube, forums en ligne
+  \item \textbf{Français} — médias francophones, journaux télévisés bilingues
+\end{itemize}
+
+Aucun outil existant ne couvre simultanément ces quatre variétés. L'objectif
+du stage est de \textbf{construire un benchmark reproductible} permettant
+d'identifier les meilleurs modèles open-source pour chaque langue, en vue
+d'une intégration dans les outils de surveillance de la DSI.
+
+\subsection{Métrique principale}
+
+Le \textbf{macro-F1} est utilisé comme métrique principale : il calcule la
+moyenne des F1 par classe, sans pondération par fréquence. Cette métrique
+pénalise les modèles qui ignorent les classes minoritaires, ce qui est
+essentiel dans un contexte où la classe « neutre » est souvent sous-représentée
+mais reste informationnellement importante.
+
+% ============================================================
+\section{Architecture du benchmark}
+% ============================================================
+
+\subsection{Vue d'ensemble du projet}
+
+Le projet est structuré en \textbf{7 étapes} séquentielles, dont
+\textbf{4 sont complètes} à la date de ce rapport :
+
+\begin{center}
+\begin{tabular}{clll}
+\toprule
+\textbf{Étape} & \textbf{Contenu} & \textbf{Statut} \\
+\midrule
+1 & Mise en place du dépôt, environnement, tests de fumée & \textcolor{goodgreen}{\textbf{Terminé}} \\
+2 & Construction et gel des jeux de test (4 langues) & \textcolor{goodgreen}{\textbf{Terminé}} \\
+3 & Évaluation des 3 modèles prêts à l'emploi & \textcolor{goodgreen}{\textbf{Terminé}} \\
+4 & Fine-tuning de 4 modèles spécialisés & \textcolor{goodgreen}{\textbf{Terminé}} \\
+5 & Atlas-Chat (LLM zéro-shot, accès conditionnel) & \textcolor{warnorange}{\textit{En attente}} \\
+6 & Corpus domaine réel (fichiers SRT HACA) & \textcolor{warnorange}{\textit{En attente}} \\
+7 & Visualisations finales, grille pondérée, rapport & \textcolor{warnorange}{\textit{Partiel}} \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\subsection{Principes méthodologiques}
+
+\begin{itemize}
+  \item \textbf{Reproductibilité} : graine aléatoire \texttt{seed=42} partout
+    (Python, NumPy, PyTorch, CUDA). Dépendances gelées dans \texttt{requirements.txt}.
+  \item \textbf{Jeux de test immuables} : construits une seule fois, hashés en
+    SHA-256, jamais modifiés par la suite.
+  \item \textbf{Harness unifié} : même code d'évaluation pour tous les modèles
+    (prêts à l'emploi ou fine-tunés), garantissant la comparabilité.
+  \item \textbf{Évaluation par langue} : aucun score global agrégeant toutes les langues.
+  \item \textbf{Mappage de labels centralisé} : vérification systématique de
+    \texttt{model.config.id2label} avant toute interprétation des sorties.
+\end{itemize}
+
+% ============================================================
+\section{Étapes réalisées}
+% ============================================================
+
+\subsection{Étape 1 — Mise en place de l'environnement}
+
+Le dépôt Git a été initialisé avec la structure suivante :
+
+\begin{lstlisting}
+benchmark/
+  src/           # modules Python (harness, finetune, utils, ...)
+  data/
+    raw/         # données brutes (gitignore)
+    test_sets/   # jeux de test gelés (darija_ar.csv, francais.csv, ...)
+  results/       # un JSON par (modele x langue) + summary.csv
+  results/figs/  # graphiques générés
+  checkpoints/   # poids des modèles fine-tunés
+  report/        # documentation et rapports
+  notebooks/     # notebook Kaggle (fine-tuning)
+  Dockerfile     # reproducibilité totale
+\end{lstlisting}
+
+Un test de fumée (\textit{smoke test}) a été exécuté avec le modèle
+\texttt{xlm-t} sur trois phrases de référence, validant l'environnement
+d'inférence avant toute mesure formelle.
+
+\subsection{Étape 2 — Construction des jeux de test}
+
+\subsubsection{Sources de données}
+
+Quatre corpus publics ont été utilisés pour constituer les jeux de test :
+
+\begin{center}
+\begin{tabularx}{\textwidth}{llXl}
+\toprule
+\textbf{Langue} & \textbf{Corpus} & \textbf{Source} & \textbf{Classes} \\
+\midrule
+darija\_ar & MAC & LeMGarouani/MAC (GitHub) & 3 (neg/neu/pos) \\
+français & Allociné & HuggingFace datasets & 2 (neg/pos) \\
+MSA & ASTD & mahmoudnabil/ASTD (GitHub) & 2 (neg/pos) \\
+arabizi & MYC & MouadJb/MYC (GitHub), script latin uniquement & 2 (neg/pos) \\
+\bottomrule
+\end{tabularx}
+\end{center}
+
+\subsubsection{Protocole d'échantillonnage}
+
+Pour chaque langue : tirage stratifié de \textbf{1\,000 lignes} (graine 42),
+sauvegarde au format \texttt{[text, label]}, calcul du hash SHA-256 pour
+garantir l'intégrité, vérification manuelle de la distribution des classes.
+
+\begin{center}
+\begin{tabular}{lrrrl}
+\toprule
+\textbf{Langue} & \textbf{neg} & \textbf{neu} & \textbf{pos} & \textbf{Remarque} \\
+\midrule
+darija\_ar & 201 & 232 & 567 & Déséquilibré, pos majoritaire \\
+français   & 520 &  —  & 480 & Binaire, quasi-équilibré \\
+MSA        & 679 &  —  & 321 & Binaire, neg majoritaire \\
+arabizi    & 343 &  —  & 657 & Binaire, pos majoritaire \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\textbf{Remarque sur le corpus MYC (arabizi) :} seules les lignes à écriture
+exclusivement latine (sans caractères arabes U+0600–U+06FF) ont été conservées,
+afin d'isoler l'arabizi pur des autres variétés.
+
+\subsection{Étape 3 — Modèles prêts à l'emploi}
+
+Trois modèles pré-entraînés ont été évalués sans entraînement supplémentaire,
+constituant la \textbf{ligne de base} du benchmark.
+
+\subsubsection{xlm-t — Modèle multilingue généraliste}
+
+\textbf{Modèle :} \texttt{cardiffnlp/twitter-xlm-roberta-base-sentiment}
+(278M paramètres) — RoBERTa multilingue fine-tuné sur 198 millions de tweets
+en 100+ langues. Seul modèle couvrant les quatre langues cibles sans
+entraînement additionnel.
+
+\begin{center}
+\begin{tabular}{lrrr}
+\toprule
+\textbf{Langue} & \textbf{Macro-F1} & \textbf{Latence CPU (ms/utt)} & \textbf{Observation} \\
+\midrule
+darija\_ar & 0{,}723 & 109{,}6 & Classe neutre difficile (F1=0{,}577) \\
+français   & 0{,}772 & 1006{,}1 & Latence anormale (textes longs) \\
+MSA        & 0{,}813 & 168{,}4 & 12,9\,\% d'abstentions (classe neutre) \\
+arabizi    & 0{,}762 & 145{,}3 & 31,2\,\% d'abstentions sur ce jeu binaire \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\textbf{Problème identifié :} xlm-t prédit « neutre » pour 31\,\% des
+entrées arabizi, car ce modèle n'a pas été exposé à l'arabizi marocain
+pendant son entraînement. Ce problème d'abstention est la principale
+motivation pour les fine-tunings de l'étape 4.
+
+\subsubsection{camelbert-da — Spécialiste arabe dialectal}
+
+\textbf{Modèle :} \texttt{CAMeL-Lab/bert-base-arabic-camelbert-da-sentiment}
+(109M paramètres) — BERT pré-entraîné sur de l'arabe dialectal multi-pays.
+
+\begin{center}
+\begin{tabular}{lrrr}
+\toprule
+\textbf{Langue} & \textbf{Macro-F1} & \textbf{Latence CPU (ms/utt)} & \textbf{Observation} \\
+\midrule
+darija\_ar & 0{,}701 & 90{,}9 & Biais vers le négatif (précision=0,581) \\
+MSA        & \textbf{0{,}924} & 163{,}7 & Meilleur résultat MSA du benchmark \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\textbf{Observation notable :} ce modèle documente une tâche binaire mais
+expose réellement trois classes (neg/neu/pos). Identifié via inspection de
+\texttt{model.config.id2label} — cas typique de divergence entre documentation
+et implémentation.
+
+\subsubsection{distilcamembert — Spécialiste français}
+
+\textbf{Modèle :} \texttt{cmarkea/distilcamembert-base-sentiment}
+(68M paramètres) — DistilCamemBERT fine-tuné sur les critiques Allociné.
+
+\begin{center}
+\begin{tabular}{lrrr}
+\toprule
+\textbf{Langue} & \textbf{Macro-F1} & \textbf{Latence CPU (ms/utt)} & \textbf{Observation} \\
+\midrule
+français & \textbf{0{,}949} & 420{,}9 & Taux d'erreur de 2\,\% (20/1000) \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\textbf{Enseignement clé :} le plus petit modèle (68M) obtient le deuxième
+meilleur score du benchmark, confirment que la spécialisation domine la taille.
+
+\subsection{Étape 4 — Fine-tuning des modèles spécialisés}
+
+\subsubsection{Protocole d'entraînement}
+
+Tous les modèles ont été fine-tunés sur \textbf{Kaggle (GPU T4 16\,Go)}
+avec la configuration suivante :
+
+\begin{itemize}
+  \item 3 époques, batch 16, learning rate $2 \times 10^{-5}$, fp16
+  \item Longueur maximale : 128 tokens
+  \item Sélection du meilleur checkpoint par macro-F1 sur validation
+  \item Évaluation via le même harness que les modèles prêts à l'emploi
+\end{itemize}
+
+\subsubsection{Modèles fine-tunés}
+
+\textbf{DarijaBERT} (\texttt{SI2M-Lab/DarijaBERT}, 147M paramètres) —
+pré-entraîné spécifiquement sur le darija marocain (écriture arabe) par le
+laboratoire SI2M (Université Mohammed V, Rabat). Fine-tuné sur MAC.
+Durée d'entraînement : \textbf{11,6 min}.
+
+\textbf{DarijaBERT-arabizi} (\texttt{SI2M-Lab/DarijaBERT-arabizi}, 171M paramètres) —
+variante couvrant l'arabizi latin-marocain. Fine-tuné sur MYC-Latin.
+Durée d'entraînement : \textbf{3,4 min}.
+
+\textbf{MARBERTv2} (\texttt{UBC-NLP/MARBERTv2}, 163M paramètres) —
+pré-entraîné sur 1 milliard de mots couvrant 25 dialectes arabes (dont le
+marocain) + MSA. Fine-tuné sur MAC.
+Durée d'entraînement : \textbf{11,8 min}.
+\textcolor{warnorange}{\textbf{Licence : recherche uniquement (non-commerciale).}}
+
+\textbf{QARIB} (\texttt{qarib/bert-base-qarib}, 135M paramètres) —
+pré-entraîné sur 420M mots d'arabe du Golfe + MSA. Fine-tuné sur MAC.
+Durée d'entraînement : \textbf{11,3 min}.
+
+% ============================================================
+\section{Résultats}
+% ============================================================
+
+\subsection{Tableau récapitulatif complet}
+
+\begin{center}
+\setlength{\tabcolsep}{5pt}
+\begin{tabular}{lcccccc}
+\toprule
+\textbf{Modèle} & \textbf{darija\_ar} & \textbf{français} & \textbf{MSA} &
+\textbf{arabizi} & \textbf{Params} & \textbf{Type} \\
+\midrule
+xlm-t           & 0{,}723 & 0{,}772 & 0{,}813 & 0{,}762 & 278M & Multilingue \\
+camelbert-da    & 0{,}701 &  —      & \cellcolor{goodgreen!30}\textbf{0{,}924} &  —  & 109M & Arabe dial. \\
+distilcamembert &  —      & \cellcolor{goodgreen!30}\textbf{0{,}949} &  —  &  —  & 68M  & Français \\
+\midrule
+DarijaBERT      & 0{,}775 &  —      &  —      &  —      & 147M & Fine-tuné \\
+DarijaBERT-arabizi &  —   &  —      &  —      & \cellcolor{goodgreen!30}\textbf{0{,}983} & 171M & Fine-tuné \\
+MARBERTv2       & \cellcolor{goodgreen!30}\textbf{0{,}844} &  — & 0{,}838 &  — & 163M & Fine-tuné \\
+QARIB           & 0{,}827 &  —      & 0{,}812 &  —      & 135M & Fine-tuné \\
+\bottomrule
+\multicolumn{7}{l}{\small\textit{Cellules vertes = meilleur résultat par langue. Ligne supérieure = modèles prêts à l'emploi.}}
+\end{tabular}
+\end{center}
+
+\subsection{Résultats par langue}
+
+\subsubsection{Darija marocain (écriture arabe)}
+
+\begin{resultbox}
+\textbf{Meilleur modèle :} MARBERTv2 — Macro-F1 = \textbf{0{,}844}\\
+\textbf{Amélioration vs ligne de base (xlm-t 0{,}723) :} +12{,}1 points
+\end{resultbox}
+
+La progression du F1 sur la classe neutre illustre l'impact de la spécialisation :
+
+\begin{center}
+\begin{tabular}{lrrrr}
+\toprule
+\textbf{Modèle} & \textbf{F1(neg)} & \textbf{F1(neu)} & \textbf{F1(pos)} & \textbf{Macro-F1} \\
+\midrule
+camelbert-da (base) & 0{,}708 & 0{,}526 & 0{,}868 & 0{,}701 \\
+xlm-t (base)        & 0{,}724 & 0{,}577 & 0{,}868 & 0{,}723 \\
+DarijaBERT (FT)     & 0{,}743 & 0{,}690 & 0{,}891 & 0{,}775 \\
+QARIB (FT)          & 0{,}838 & 0{,}733 & 0{,}909 & 0{,}827 \\
+MARBERTv2 (FT)      & \textbf{0{,}854} & \textbf{0{,}751} & \textbf{0{,}927} & \textbf{0{,}844} \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+La classe neutre — la plus difficile — passe de 0{,}526 (camelbert-da) à
+\textbf{0{,}751} (MARBERTv2), franchissant pour la première fois le seuil
+de 0{,}75 fixé comme objectif dans le plan.
+
+\subsubsection{Français}
+
+\begin{resultbox}
+\textbf{Meilleur modèle :} distilcamembert — Macro-F1 = \textbf{0{,}949}\\
+\textbf{Taux d'erreur :} 2{,}0\,\% (20 erreurs sur 1\,000)
+\end{resultbox}
+
+Aucun fine-tuning n'a été réalisé pour le français à cette étape : le modèle
+distilcamembert (prêt à l'emploi) constitue déjà une référence solide, avec
+une avance de +17{,}7 points sur xlm-t. Un fine-tuning dédié (étape 7) pourrait
+encore améliorer les performances sur du contenu audiovisuel réel.
+
+\subsubsection{Arabe standard moderne (MSA)}
+
+\begin{resultbox}
+\textbf{Meilleur modèle :} camelbert-da (prêt à l'emploi) — Macro-F1 = \textbf{0{,}924}\\
+\textbf{Taux d'erreur :} 3{,}2\,\% (32 erreurs sur 1\,000)
+\end{resultbox}
+
+Les modèles fine-tunés (MARBERTv2 0{,}838, QARIB 0{,}812) n'atteignent pas
+camelbert-da sur le MSA. La raison est structurelle : ces modèles ont été
+fine-tunés avec une tête à trois classes (neg/neu/pos) sur des données darija,
+et lorsqu'ils sont évalués sur le jeu MSA binaire (neg/pos), leur classe
+neutre absorbe 18--20\,\% des prédictions, réduisant le rappel. Un fine-tuning
+dédié MSA avec une tête binaire serait la correction appropriée.
+
+\subsubsection{Arabizi marocain}
+
+\begin{resultbox}
+\textbf{Meilleur modèle :} DarijaBERT-arabizi — Macro-F1 = \textbf{0{,}983}\\
+\textbf{Taux d'erreur :} 1{,}5\,\% (15 erreurs sur 1\,000) — meilleur résultat du benchmark
+\end{resultbox}
+
+\begin{center}
+\begin{tabular}{lrrrr}
+\toprule
+\textbf{Modèle} & \textbf{F1(neg)} & \textbf{F1(pos)} & \textbf{Macro-F1} & \textbf{Abstentions} \\
+\midrule
+xlm-t (base)            & 0{,}780 & 0{,}745 & 0{,}762 & 31{,}2\,\% \\
+DarijaBERT-arabizi (FT) & \textbf{0{,}978} & \textbf{0{,}989} & \textbf{0{,}983} & 0\,\% \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+L'amélioration de +22{,}1 points est la plus importante du benchmark. Elle
+résout le problème des abstentions d'xlm-t (31\,\% d'entrées prédites
+« neutre » par défaut) et produit le résultat le plus élevé, avec seulement
+3,4 minutes d'entraînement sur GPU Kaggle T4.
+
+\subsection{Latence et coût opérationnel}
+
+Les modèles fine-tunés ont été mesurés sur GPU (Kaggle T4) ; les modèles
+prêts à l'emploi sur CPU. Le gain est de l'ordre de \textbf{30 à 300×} :
+
+\begin{center}
+\begin{tabular}{llrr}
+\toprule
+\textbf{Catégorie} & \textbf{Matériel} & \textbf{Latence (ms/utt)} &
+\textbf{Temps/émission 30 min} \\
+\midrule
+Modèles prêts à l'emploi & CPU & 90 -- 1\,006 & 5 -- 60 min \\
+Modèles fine-tunés & GPU T4 & 2{,}5 -- 4{,}4 & 9 -- 16 s \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+À raison de 2 sous-titres par seconde pour une émission de 30 minutes
+(≈3\,600 utterances), les modèles fine-tunés permettent une analyse
+quasiment en temps réel.
+
+% ============================================================
+\section{Visualisations produites}
+% ============================================================
+
+Trois graphiques ont été générés par le script \texttt{src/aggregate.py} :
+
+\begin{enumerate}
+  \item \textbf{Heatmap macro-F1} (\texttt{results/figs/heatmap\_f1.png}) —
+    grille modèle × langue, couleur proportionnelle au score. Visualise d'un coup
+    d'œil qu'aucun modèle ne domine toutes les langues, et que DarijaBERT-arabizi
+    (0{,}983) et distilcamembert (0{,}949) sont les deux cellules les plus sombres.
+
+  \item \textbf{Nuage coût-précision} (\texttt{results/figs/scatter\_cost\_precision.png}) —
+    axe X : latence (log), axe Y : macro-F1 moyen, taille de bulle : racine carrée
+    du nombre de paramètres. Montre clairement deux clusters : modèles GPU
+    (2--5 ms, haute qualité) vs modèles CPU (90--1\,000 ms, qualité variable).
+
+  \item \textbf{Radar des finalistes} (\texttt{results/figs/radar\_finalists.png}) —
+    4 axes normalisés (Précision 50\,\%, Intégration 20\,\%, Coût 20\,\%, Couverture 10\,\%).
+    Identifie DarijaBERT-arabizi comme premier au score pondéré (0{,}845),
+    suivi de distilcamembert (0{,}724) et MARBERTv2 (0{,}540).
+\end{enumerate}
+
+\begin{center}
+\begin{tabular}{lrrrrr}
+\toprule
+\textbf{Modèle} & \textbf{Précision} & \textbf{Coût} & \textbf{Couverture} &
+\textbf{Score pondéré} & \textbf{Rang} \\
+\midrule
+DarijaBERT-arabizi & 1{,}000 & 0{,}599 & 0{,}25 & \textbf{0{,}845} & 1 \\
+distilcamembert    & 0{,}839 & 0{,}400 & 0{,}25 & 0{,}724 & 2 \\
+MARBERTv2          & 0{,}340 & 0{,}599 & 0{,}50 & 0{,}540 & 3 \\
+camelbert-da       & 0{,}207 & 0{,}821 & 0{,}50 & 0{,}518 & 4 \\
+QARIB              & 0{,}239 & 0{,}656 & 0{,}50 & 0{,}501 & 5 \\
+xlm-t              & 0{,}000 & 0{,}491 & 1{,}00 & 0{,}398 & 6 \\
+DarijaBERT         & 0{,}033 & 0{,}664 & 0{,}25 & 0{,}374 & 7 \\
+\bottomrule
+\multicolumn{6}{l}{\small\textit{Précision normalisée 50\,\%, Intégration 20\,\%, Coût 20\,\%, Couverture 10\,\%.}}
+\end{tabular}
+\end{center}
+
+% ============================================================
+\section{Analyses croisées et enseignements}
+% ============================================================
+
+\subsection{Le spécialiste bat le généraliste}
+
+Le résultat le plus constant du benchmark est qu'un modèle spécialisé sur
+une langue et un domaine surpasse systématiquement un modèle généraliste
+plus grand :
+
+\begin{center}
+\begin{tabular}{lrrrr}
+\toprule
+\textbf{Langue} & \textbf{Généraliste} & \textbf{Spécialiste} & \textbf{Gain} \\
+\midrule
+Français     & xlm-t 0{,}772  & distilcamembert 0{,}949   & +0{,}177 \\
+MSA          & xlm-t 0{,}813  & camelbert-da 0{,}924       & +0{,}111 \\
+Darija AR    & xlm-t 0{,}723  & MARBERTv2 fine-tuné 0{,}844 & +0{,}121 \\
+Arabizi      & xlm-t 0{,}762  & DarijaBERT-arabizi 0{,}983  & +0{,}221 \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\subsection{La classe neutre reste la plus difficile}
+
+Sur le jeu darija (3 classes), la classe neutre a systématiquement le F1
+le plus bas. Elle nécessite de détecter une \textit{absence} de sentiment
+polarisé, ce qui est plus difficile que d'identifier une émotion forte.
+MARBERTv2 est le premier modèle à franchir 0{,}75 sur cette classe.
+
+\subsection{Le coût d'entraînement est négligeable}
+
+Les quatre fine-tunings ont été réalisés gratuitement sur Kaggle en moins
+de 12 minutes chacun. Le fine-tuning de DarijaBERT-arabizi (3,4 min) produit
+le meilleur score du benchmark — illustrant qu'un bon alignement entre données
+de pré-entraînement et données de fine-tuning peut accélérer considérablement
+la convergence.
+
+\subsection{Recommandations par scénario}
+
+\begin{center}
+\begin{tabular}{lll}
+\toprule
+\textbf{Scénario} & \textbf{Modèle recommandé} & \textbf{Score} \\
+\midrule
+Darija marocain (écriture arabe) & MARBERTv2 (fine-tuné) & 0{,}844 \\
+Arabizi marocain                 & DarijaBERT-arabizi (fine-tuné) & 0{,}983 \\
+Arabe standard (MSA)             & camelbert-da (prêt à l'emploi) & 0{,}924 \\
+Français                         & distilcamembert (prêt à l'emploi) & 0{,}949 \\
+Modèle unique toutes langues     & xlm-t (acceptable, pas optimal) & 0{,}762--0{,}813 \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+% ============================================================
+\section{Prochaines étapes}
+% ============================================================
+
+\begin{enumerate}
+  \item \textbf{Étape 5 — Atlas-Chat (LLM zéro-shot)} :
+    Évaluation du LLM multilingue
+    \texttt{MBZUAI-Paris/Atlas-Chat-2B} (modèle ouvert spécialisé arabe
+    maghrébin) en mode zéro-shot sur les jeux darija et arabizi. Quantisation
+    4 bits (BitsAndBytes) sur GPU T4. Objectif : comparer le coût LLM
+    vs le F1 des encodeurs fine-tunés. \textit{Accès conditionnel
+    (modèle Gemma, license à confirmer).}
+
+  \item \textbf{Étape 6 — Corpus domaine réel} :
+    Constitution d'un jeu de test annoté manuellement (~200 utterances) à
+    partir de fichiers SRT de la HACA. Les règles d'annotation seront
+    définies avec l'encadrante. Ce jeu permettra de mesurer l'écart entre
+    performances sur données académiques et performances sur données réelles.
+
+  \item \textbf{Étape 7 — Rapport final et pipeline SRT} :
+    \begin{itemize}
+      \item Pipeline SRT complet : parsage → segmentation en utterances →
+        routage linguistique (heuristique script) → modèle par langue → résultat
+      \item Synthèse état de l'art en TALN multilingue marocain
+      \item Rapport final avec recommandations pour intégration dans HMS/HACA Bridges
+    \end{itemize}
+\end{enumerate}
+
+% ============================================================
+\section{Conclusion}
+% ============================================================
+
+En quatre étapes, le benchmark a atteint ses objectifs intermédiaires :
+jeux de test reproductibles, harness d'évaluation unifié, et identification
+des meilleurs modèles pour trois des quatre langues cibles (arabizi, français,
+MSA). Pour le darija marocain, le modèle MARBERTv2 fine-tuné dépasse le seuil
+opérationnel de 0{,}75 avec un score de \textbf{0{,}844}.
+
+Le résultat le plus marquant est \textbf{DarijaBERT-arabizi à 0{,}983 macro-F1}
+sur l'arabizi marocain — une langue pour laquelle aucun modèle dédié
+n'existait auparavant. Ce résultat confirme que le fine-tuning de modèles
+pré-entraînés sur des données dialectales marocaines constitue la voie
+la plus efficace pour des performances opérationnelles.
+
+Les étapes restantes (Atlas-Chat, corpus domaine réel, rapport final)
+permettront de valider ces résultats sur des contenus audiovisuels réels
+et de formuler des recommandations d'intégration concrètes pour la DSI.
+
+\vspace{1cm}
+\begin{center}
+\rule{0.4\linewidth}{0.5pt}\\[4pt]
+\textit{Marwane ElBaraka — Stage HACA / DSI — Juin 2026}
+\end{center}
+
+\end{document}
