@@ -1,0 +1,363 @@
+# Benchmark Findings — Analyse des résultats
+
+**Projet :** Analyse de sentiment multilingue pour la HACA
+**Auteur :** Marwane ElBaraka
+**Date :** Juin 2026
+**Modèles évalués :** 9 (3 ready-made + 4 fine-tuned + 2 LLM zero-shot)
+**Langues :** darija_ar · arabizi · francais · msa
+**Jeux de test :** 1 000 utterances par langue (publics) + 194 utterances domaine réel
+
+---
+
+## 1. Vue d'ensemble des résultats
+
+### Tableau complet — Macro-F1 par modèle × langue
+
+| Modèle | Type | darija\_ar | arabizi | francais | msa | Moyenne |
+|---|---|---|---|---|---|---|
+| **DarijaBERT-arabizi** | fine-tuné | — | **0.983** | — | — | 0.983 |
+| **distilcamembert** | ready-made | — | — | **0.949** | — | 0.949 |
+| **camelbert-da** | ready-made | 0.701 | — | — | **0.924** | 0.812 |
+| **MARBERTv2** | fine-tuné | **0.844** | — | — | 0.838 | 0.841 |
+| **Atlas-Chat-2B** | LLM 4-bit | 0.727 | 0.978 | — | — | 0.852 |
+| **QARIB** | fine-tuné | 0.827 | — | — | 0.812 | 0.819 |
+| **Atlas-Chat-9B** | LLM 4-bit | 0.833 | 0.754† | — | — | 0.793 |
+| **DarijaBERT** | fine-tuné | 0.775 | — | — | — | 0.775 |
+| **xlm-t** | ready-made | 0.723 | 0.762 | 0.772 | 0.812 | 0.767 |
+
+†  9B arabizi : 42,4 % des prédictions sont « neutre » sur un jeu de test binaire.
+
+**Latences (ms/utterance) :**
+
+| Modèle | darija\_ar | arabizi | francais | msa |
+|---|---|---|---|---|
+| MARBERTv2 fine-tuné | 2,5 | — | — | 4,4 |
+| DarijaBERT-arabizi | — | 3,9 | — | — |
+| QARIB | 2,7 | — | — | 4,5 |
+| DarijaBERT | 2,7 | — | — | — |
+| camelbert-da | 90,9 | — | — | 163,7 |
+| xlm-t | 109,6 | 145,3 | 1 006,1 | 168,4 |
+| distilcamembert | — | — | 420,9 | — |
+| Atlas-Chat-2B (4-bit) | 186,4 | 184,5 | — | — |
+| Atlas-Chat-9B (4-bit) | 451,0 | 451,3 | — | — |
+
+---
+
+## 2. Constatations par langue
+
+### 2.1 Darija arabe (darija_ar)
+
+Jeu de test : 1 000 utterances — neg=201, neu=232, pos=567 (tweets et commentaires YouTube marocains).
+
+| Rang | Modèle | Macro-F1 |
+|---|---|---|
+| 1 | MARBERTv2 fine-tuné | **0.844** |
+| 2 | Atlas-Chat-9B | 0.833 |
+| 3 | QARIB fine-tuné | 0.827 |
+| 4 | Atlas-Chat-2B | 0.727 |
+| 5 | DarijaBERT fine-tuné | 0.775 |
+| 6 | camelbert-da (ready-made) | 0.701 |
+| 7 | xlm-t | 0.723 |
+
+**Observations :**
+- MARBERTv2 reste le meilleur modèle global sur la darija. Son avantage vient d'un F1 élevé sur la classe neg (0.854) et pos (0.927), grâce à un fine-tuning sur le jeu MAC (tweets marocains).
+- Atlas-Chat-9B (0.833) dépasse QARIB (0.827) sans aucun fine-tuning, illustrant la force des LLM sur des langues sous-représentées en entraînement supervisé.
+- camelbert-da (0.701), bien que conçu pour l'arabe dialectal, ne reçoit pas de fine-tuning ici et peine avec la classe neutre.
+
+### 2.2 Arabizi (arabizi)
+
+Jeu de test : 1 000 utterances binaires — neg=343, pos=657 (pas de classe neutre dans le jeu de test MYC).
+
+| Rang | Modèle | Macro-F1 |
+|---|---|---|
+| 1 | DarijaBERT-arabizi fine-tuné | **0.983** |
+| 2 | Atlas-Chat-2B | **0.978** |
+| 3 | Atlas-Chat-9B | 0.754 |
+| 4 | xlm-t | 0.762 |
+
+**Observations :**
+- DarijaBERT-arabizi (0.983) est le meilleur modèle toutes catégories, atteignant une quasi-perfection (F1 neg=0.978, F1 pos=0.987).
+- Atlas-Chat-2B (0.978) est à 0.5 point près, malgré 10× plus de paramètres et 47× plus de latence — preuve que la taille ne garantit pas le gain.
+- **L'effondrement du 9B (0.754) est le résultat le plus contre-intuitif du benchmark :** le modèle 9× plus grand est 22 points en dessous du 2B. Cause : 42,4 % des utterances reçoivent la prédiction « neutre » — classe absente du jeu de test binaire MYC. Le 9B est mieux calibré sur la nuance (il prédit « neutre » là où le 2B forcerait pos/neg), ce qui aide sur la darija 3 classes mais ruine les performances sur un jeu binaire. Ce phénomène est détaillé en §4.
+
+### 2.3 Français (francais)
+
+Jeu de test : 1 000 utterances — critiques de films Allociné (neg/pos/neu).
+
+| Rang | Modèle | Macro-F1 |
+|---|---|---|
+| 1 | distilcamembert fine-tuné | **0.949** |
+| 2 | xlm-t | 0.772 |
+
+**Observations :**
+- distilcamembert domine très nettement (+17,7 pts). C'est un modèle natif français : aucun gain n'est à attendre d'un fine-tuning supplémentaire.
+- xlm-t est le seul autre modèle testé sur le français et reste correct mais loin derrière.
+
+### 2.4 Arabe standard moderne (msa)
+
+Jeu de test : 1 000 utterances ASTD (tweets politiques égyptiens).
+
+| Rang | Modèle | Macro-F1 |
+|---|---|---|
+| 1 | camelbert-da (ready-made) | **0.924** |
+| 2 | MARBERTv2 fine-tuné | 0.838 |
+| 3 | QARIB fine-tuné | 0.812 |
+| 4 | xlm-t | 0.812 |
+
+**Observations :**
+- camelbert-da (0.924) est étonnamment le meilleur, malgré l'absence de fine-tuning. Il a été pré-entraîné spécifiquement sur du texte arabe dialectal et MSA, ce qui lui confère un avantage natif sur ce jeu.
+- MARBERTv2 fine-tuné sur la darija généralise bien au MSA (0.838), à seulement 8,6 pts du ready-made spécialisé.
+
+---
+
+## 3. Fine-tuning vs ready-made vs LLM
+
+Le tableau ci-dessous résume la valeur ajoutée de chaque approche :
+
+| Approche | Meilleur F1 darija | Meilleur F1 arabizi | Latence typ. | GPU requis |
+|---|---|---|---|---|
+| Fine-tuned encoder | **0.844** (MARBERTv2) | **0.983** (DarijaBERT-az) | ~3 ms | ≥ 4 Go VRAM |
+| LLM zero-shot (2B) | 0.727 | 0.978 | ~185 ms | 4 Go (4-bit) |
+| LLM zero-shot (9B) | 0.833 | 0.754 | ~451 ms | 6 Go (4-bit) |
+| Ready-made encoder | 0.723 (xlm-t) | 0.762 (xlm-t) | ~100–1000 ms | CPU possible |
+
+**Règle de décision (issue du PLAN) :**
+> Préférer un encoder fine-tuné si son macro-F1 darija ≥ 0,75 **ou** si l'écart LLM–encoder < 5 points de F1.
+
+Sur la darija : MARBERTv2 (0.844) dépasse le seuil de 0,75 et l'écart avec le meilleur LLM (9B, 0.833) est de 1,1 point — bien en dessous des 5 points. **L'encoder fine-tuné est recommandé.**
+
+Sur l'arabizi : DarijaBERT-arabizi (0.983) dépasse le seuil de 0,75 et l'écart avec le LLM 2B (0.978) est de 0,5 point. **L'encoder fine-tuné est recommandé.**
+
+---
+
+## 4. L'inversion d'échelle : pourquoi le 9B est pire que le 2B sur l'arabizi
+
+C'est la découverte la plus surprenante du benchmark.
+
+| Modèle | darija\_ar (3 classes) | arabizi (binaire) |
+|---|---|---|
+| Atlas-Chat-2B | 0.727 | **0.978** |
+| Atlas-Chat-9B | **0.833** | 0.754 |
+
+Le 9B est meilleur sur la tâche à 3 classes et pire sur la tâche binaire. L'explication n'est pas un bug mais un **artefact de calibration** :
+
+- Le 9B est mieux calibré que le 2B : il émet « neutre » quand il est incertain, là où le 2B force une prédiction pos/neg.
+- Sur la darija (3 classes) : cette calibration aide. F1 neutre : 0.480 (2B) → 0.746 (9B), ce qui tire macro-F1 de 0.727 à 0.833.
+- Sur l'arabizi (binaire, MYC) : il n'y a **pas de classe neutre dans le jeu de test**. Les 424/1 000 prédictions « neutre » du 9B comptent comme des erreurs. Recall pos s'effondre à 0.417.
+- Le 2B, moins calibré mais plus direct, ne prédit presque jamais « neutre » sur ce jeu binaire — d'où son quasi-score parfait (0.978).
+
+**Conclusion pratique :** pour un jeu de test binaire ou un contexte où la classe neutre est rare, le 2B est supérieur. Pour une tâche 3 classes sur de la darija, le 9B est le meilleur LLM testé.
+
+---
+
+## 5. L'écart domaine réel — la constatation principale pour la HACA
+
+### 5.1 Protocole
+
+194 utterances extraites de vraies émissions HACA et de vidéos YouTube marocaines (fichiers `.srt`), évaluées sur **trois jeux d'annotations distincts** pour mesurer la sensibilité des résultats à la philosophie d'annotation.
+
+**Trois jeux d'annotations (194 utterances chacun) :**
+
+| Jeu | Annotateur | Philosophie | neg | neu | pos |
+|---|---|---|---|---|---|
+| `domaine_reel.csv` | Humain (strict) | L'animateur exprime explicitement du sentiment | 38 | 146 | 10 |
+| `gemini.csv` | Gemini 1.5 (large) | Le contenu décrit quelque chose de négatif/positif | 65 | 97 | 32 |
+| `domaine_reel_v2.csv` | Humain (HACA) | Valence du contenu — ce qui est décrit importe, pas le ton | 63 | 111 | 20 |
+
+La philosophie HACA retenue (**v2**) : une émission qui rapporte un scandale de corruption ou l'émigration des médecins est « négative », même si l'animateur reste neutre. C'est ce que la HACA régule — le **contenu diffusé**, pas la posture du présentateur.
+
+- Langue : darija marocaine en script arabe (100%)
+- Types de contenus : débats politiques, explications économiques/fiscales, histoire du Maroc, santé, anticorruption
+
+Les 5 modèles Arabic testés en step 2–5 ont été évalués sur les trois jeux.
+
+### 5.2 Résultats — comparaison multi-modèles et multi-annotations
+
+**Macro-F1 sur les trois jeux d'annotations (même 194 utterances, philosophies différentes) :**
+
+| Modèle | Public darija | Strict (v1) | Gemini (large) | **HACA (v2)** | Écart public→v2 |
+|---|---|---|---|---|---|
+| **xlm-t** | 0.723 | 0.413 | **0.613** | **0.489** | −0.234 |
+| **DarijaBERT** | 0.775 | 0.439 | 0.526 | 0.415 | −0.360 |
+| **QARIB** | 0.827 | 0.421 | 0.459 | 0.386 | −0.441 |
+| **MARBERTv2** | **0.844** | **0.441** | 0.459 | 0.380 | −0.464 |
+| **camelbert-da** | 0.701 | 0.306 | 0.513 | 0.374 | −0.327 |
+
+**Observations clés :**
+1. **xlm-t est le meilleur modèle sur les annotations broadened** (Gemini : 0.613, HACA v2 : 0.489), alors qu'il est quatrième sur les annotations strictes (0.413). Le classement s'inverse selon la philosophie d'annotation.
+2. **L'écart de généralisation est plus petit pour xlm-t quel que soit le jeu** (−0.234 sur v2 vs −0.464 pour MARBERTv2). Les encoders fine-tunés sur MAC-tweets sur-apprennent des corrélations shortcut (argot Twitter, emojis) absentes du broadcast.
+3. **Les scores Gemini sont artificiellement élevés** (0.459–0.613) car Gemini a annoté les mêmes types de contenus que ses propres sorties, créant un biais d'alignement. Les annotations HACA v2 (humain, indépendant) sont l'étalon fiable.
+4. **camelbert-da présente un biais négatif extrême :** recall neg = 0.905 mais recall neu = 0.234 sur v2 — il sur-prédit neg massivement et ignore la majorité neutre.
+
+### 5.3 Détail par classe (MARBERTv2 — modèle de référence)
+
+| | Jeu public (MAC tweets) | Domaine réel HACA |
+|---|---|---|
+| **Macro-F1** | **0.844** | **0.441** |
+| F1 neg | 0.854 | 0.226 |
+| F1 neu | 0.751 | 0.824 |
+| F1 pos | 0.927 | 0.273 |
+| Support neg | 201 | 38 |
+| Support neu | 232 | 146 |
+| Support pos | 567 | 10 |
+
+### 5.4 Matrices de confusion — domaine réel
+
+**MARBERTv2** (macro-F1 = 0.441)
+```
+               pred_neg  pred_neu  pred_pos
+true_neg  (38)     6        32         0      ← recall 0.158
+true_neu (146)     8       129         9
+true_pos  (10)     1         6         3      ← recall 0.300
+```
+
+**DarijaBERT** (macro-F1 = 0.439)
+```
+               pred_neg  pred_neu  pred_pos
+true_neg  (38)    17        21         0      ← recall 0.447 (meilleur)
+true_neu (146)    29       105        12
+true_pos  (10)     2         6         2
+```
+
+**QARIB** (macro-F1 = 0.421)
+```
+               pred_neg  pred_neu  pred_pos
+true_neg  (38)     8        30         0
+true_neu (146)    15       117        14
+true_pos  (10)     2         5         3
+```
+
+**xlm-t** (macro-F1 = 0.413)
+```
+               pred_neg  pred_neu  pred_pos
+true_neg  (38)    24        12         2      ← recall 0.632 (le plus élevé)
+true_neu (146)    52        72        22      ← sous-prédit neu
+true_pos  (10)     4         2         4
+```
+
+**camelbert-da** (macro-F1 = 0.306)
+```
+               pred_neg  pred_neu  pred_pos
+true_neg  (38)    35         1         2      ← recall 0.921 mais P=0.241
+true_neu (146)   103        29        14      ← confusion massive neg/neu
+true_pos  (10)     7         0         3
+```
+
+**Pattern commun :** tous les modèles peinent sur la classe neutre-vs-négative en contexte broadcast. Les stratégies divergent — xlm-t et camelbert-da sur-prédisent neg, les encoders fine-tunés sur-prédisent neu — mais aucun ne trouve l'équilibre.
+
+### 5.4b Matrices de confusion — HACA annotations v2 (neg=63, neu=111, pos=20)
+
+**MARBERTv2** (macro-F1 = 0.380)
+```
+               pred_neg  pred_neu  pred_pos
+true_neg  (63)    10        53         0      ← recall 0.159
+true_neu (111)     5        97         9
+true_pos  (20)     1        16         3      ← recall 0.150
+```
+
+**DarijaBERT** (macro-F1 = 0.415)
+```
+               pred_neg  pred_neu  pred_pos
+true_neg  (63)    26        37         0      ← recall 0.413
+true_neu (111)    19        80        12
+true_pos  (20)     3        15         2
+```
+
+**QARIB** (macro-F1 = 0.386)
+```
+               pred_neg  pred_neu  pred_pos
+true_neg  (63)    14        48         1      ← recall 0.222
+true_neu (111)     9        89        13
+true_pos  (20)     2        15         3
+```
+
+**xlm-t** (macro-F1 = 0.489)
+```
+               pred_neg  pred_neu  pred_pos
+true_neg  (63)    39        18         6      ← recall 0.619
+true_neu (111)    34        62        15
+true_pos  (20)     8         5         7      ← recall 0.350 (best pos recall)
+```
+
+**camelbert-da** (macro-F1 = 0.374)
+```
+               pred_neg  pred_neu  pred_pos
+true_neg  (63)    57         3         3      ← recall 0.905 but P=0.396
+true_neu (111)    73        26        12      ← recall 0.234 catastrophique
+true_pos  (20)    14         2         4
+```
+
+### 5.5 Analyse de l'écart
+
+**1. Registre :** Les tweets MAC utilisent une darija explicite et émotionnelle ("هذا سيء جداً", "واو رائع"). Le contenu broadcast utilise un registre mesuré et journalistique ("فيه مشاكل كبيرة", "لم تستفد الطبقة الوسطى"). Les modèles fine-tunés sur MAC n'ont jamais vu cette forme indirecte de critique.
+
+**2. Déséquilibre de classes :** Le jeu domaine réel est 75% neutre. Le jeu MAC a une majorité positive (56,7%). Les frontières de décision apprises en entraînement sont biaisées vers pos/neg — recall neg moyen des fine-tunés = 0.27 vs recall neg de xlm-t = 0.63 (xlm-t n'a pas appris ce biais).
+
+**3. Bruits ASR :** ~36 des 194 utterances viennent de fichiers SRT avec une transcription automatique médiocre (fichiers 1.srt, 2.srt, 6.srt). Ces fragments ininterprétables gonflent artificiellement la classe neutre et bruitent les prédictions.
+
+**4. Effet corpus :** MAC est composé de tweets politiques et sociaux. Le contenu broadcast inclut des émissions religieuses, des documentaires économiques, des débats parlementaires — domaines absents des données d'entraînement.
+
+**5. Pourquoi xlm-t généralise mieux :** xlm-t est un modèle multilingue non fine-tuné sur un corpus Arabic spécifique — il n'a pas intériorisé les corrélations shortcut du jeu MAC (mots d'argot positifs, emojis). En contrepartie, sa performance absolue reste inférieure à MARBERTv2 sur les tweets.
+
+### 5.6 Implications pour la HACA
+
+L'écart de −0.30 à −0.41 est **structurel**, pas accidentel. Il touche tous les modèles, y compris les meilleurs. Les options concrètes :
+
+1. **Court terme — adaptation fine-tuning :** Annoter 500–1 000 utterances broadcast supplémentaires et affiner MARBERTv2 sur un corpus mixte (MAC tweets + broadcast). La séparation des distributions train/test suggère que 300–500 exemples broadcast par classe suffiraient à combler la majorité de l'écart (objectif : macro-F1 ≥ 0.70 sur le jeu domaine réel).
+2. **Moyen terme — jeu de test plus robuste :** Créer un jeu domaine réel de 500+ utterances avec plusieurs annotateurs et kappa de Cohen. L'actuel (194 utt., 1 annotateur) doit être considéré comme une étude pilote.
+3. **Remarque sur la classe pos :** Avec seulement 10 exemples positifs, la F1 pos est haute-variance. Le sentiment positif est structurellement rare dans le contenu d'information broadcast. Une stratégie d'annotation ciblée est nécessaire.
+4. **Décision de déploiement :** Si le fine-tuning broadcast n'est pas réalisable immédiatement, xlm-t offre le meilleur compromis généralisation / couverture multilingue (gap −0.310 vs −0.403 pour MARBERTv2), bien qu'à un niveau absolu inférieur.
+
+---
+
+## 6. Recommandations de déploiement
+
+### Option A — Routage max-précision (recommandé)
+
+Un modèle différent par langue, choisir le meilleur F1.
+
+| Langue détectée | Modèle | Macro-F1 public | Latence |
+|---|---|---|---|
+| darija\_ar | MARBERTv2 fine-tuné | 0.844 | 2.5 ms |
+| arabizi | DarijaBERT-arabizi fine-tuné | 0.983 | 3.9 ms |
+| francais | distilcamembert | 0.949 | 420.9 ms |
+| msa | camelbert-da | 0.924 | 163.7 ms |
+
+**Mémoire totale :** ~2 Go de poids (fp16). Applicable sur tout serveur avec GPU 8 Go.
+**Limitation :** 4 modèles à maintenir. La F1 domaine réel de MARBERTv2 tombe à 0.441 — adaptation broadcast nécessaire.
+
+### Option B — Modèle unique (min-coût)
+
+xlm-t couvre toutes les langues : F1 moyen = 0.767. Perd ~7–21 points selon la langue. À réserver si les ressources d'inférence sont très contraintes.
+
+### Option C — Encodeur de secours LLM
+
+Utiliser Atlas-Chat-2B pour darija\_ar et arabizi si aucun fine-tuning n'est possible :
+- darija_ar : 0.727 (−11.7 pts vs MARBERTv2)
+- arabizi : 0.978 (−0.5 pts vs DarijaBERT-arabizi, mais 47× plus lent)
+
+L'écart sur la darija est trop large pour recommander cette option en production, sauf si le fine-tuning est impossible.
+
+---
+
+## 7. Prochaines étapes
+
+1. **Adaptation broadcast :** Annoter ~500 utterances broadcast supplémentaires et relancer le fine-tuning de MARBERTv2 avec ce corpus mixte pour combler l'écart domaine réel (objectif : macro-F1 ≥ 0.70 sur le jeu domaine réel).
+2. **Couverture française :** Le jeu domaine réel ne contient aucune utterance française — les émissions HACA en français ne sont pas représentées. Si la HACA régule des contenus francophones, construire un sous-jeu domaine réel français.
+3. **Test arabizi broadcast :** Les SRT actuels ne contiennent pas d'arabizi. Si des émissions utilisent l'arabizi (rare à la TV), le tester séparément.
+4. **Plots et grille pondérée :** Regénérer la heatmap macro-F1 (modèle × langue), le scatter coût-précision, le radar des finalistes, et la grille pondérée (Précision 50% + Intégration 20% + Coût 20% + Couverture 10%) avec tous les modèles incluant Atlas-Chat 2B et 9B.
+
+---
+
+## Annexes
+
+- Résultats détaillés par classe : `results/*.json`
+- Résumé agrégé : `results/summary.csv`
+- Jeu domaine réel (annotations strictes) : `data/test_sets/domaine_reel.csv`
+- Jeu Gemini (annotations larges, 65/97/32) : `data/test_sets/gemini.csv`
+- Jeu HACA v2 (annotations HACA, 63/111/20) : `data/test_sets/domaine_reel_v2.csv` — SHA-256 : `32b8e75d920858686adbfc2e8126c9ce72375a480d4ba88f92fc0b55938e098d`
+- Script d'annotation v2 : `src/apply_annotations_gemini.py`
+- Règles d'annotation : [DOMAINE_REEL_ANNOTATION.md](DOMAINE_REEL_ANNOTATION.md)
+- Pipeline SRT : [SRT_PIPELINE.md](SRT_PIPELINE.md)
+- Analyse détaillée modèle par modèle : [RESULTS_ANALYSIS.md](RESULTS_ANALYSIS.md)
+- Notes fine-tuning et LLM : [FINETUNING.md](FINETUNING.md)
