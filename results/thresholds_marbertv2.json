@@ -1,0 +1,79 @@
+{
+  "model": "marbertv2",
+  "dataset": "domaine_reel",
+  "n": 194,
+  "default_macro_f1": 0.4411,
+  "calibrated_macro_f1_full": 0.5031,
+  "cv_default_mean": 0.4165,
+  "cv_default_std": 0.094,
+  "cv_calib_mean": 0.4636,
+  "cv_calib_std": 0.0695,
+  "cv_gain": 0.0471,
+  "thresholds": {
+    "neg": 0.15,
+    "neu": 0.5,
+    "pos": 0.5
+  },
+  "fold_thresholds": [
+    {
+      "neg": 0.15,
+      "pos": 0.5
+    },
+    {
+      "neg": 0.15,
+      "pos": 0.5
+    },
+    {
+      "neg": 0.15,
+      "pos": 0.5
+    },
+    {
+      "neg": 0.05,
+      "pos": 0.05
+    },
+    {
+      "neg": 0.15,
+      "pos": 0.5
+    }
+  ],
+  "per_class_calibrated": {
+    "neg": {
+      "precision": 0.5455,
+      "recall": 0.3158,
+      "f1-score": 0.4,
+      "support": 38.0
+    },
+    "neu": {
+      "precision": 0.8,
+      "recall": 0.8767,
+      "f1-score": 0.8366,
+      "support": 146.0
+    },
+    "pos": {
+      "precision": 0.25,
+      "recall": 0.3,
+      "f1-score": 0.2727,
+      "support": 10.0
+    }
+  },
+  "per_class_default": {
+    "neg": {
+      "precision": 0.4,
+      "recall": 0.1579,
+      "f1-score": 0.2264,
+      "support": 38.0
+    },
+    "neu": {
+      "precision": 0.7725,
+      "recall": 0.8836,
+      "f1-score": 0.8243,
+      "support": 146.0
+    },
+    "pos": {
+      "precision": 0.25,
+      "recall": 0.3,
+      "f1-score": 0.2727,
+      "support": 10.0
+    }
+  }
+}
