@@ -314,6 +314,121 @@ for lang in ["darija_ar", "arabizi"]:
     print(f"  non-response rate: {d.get('non_response_rate', 'N/A')}")
     print()
 
+# ─────────────────────────────────────────────────────────────────────────────
+# OPTION 2 — Broadcast-aware fine-tuning (target ≥0.70 on domaine_reel_v2)
+#
+# Two strategies (choose one per session):
+#
+#   A. marbertv2-mixed      — MAC + 500 broadcast utterances, fresh from Hub.
+#                              Requires broadcast_train_raw.csv committed in repo.
+#                              Est. ~30 min on T4.
+#
+#   B. marbertv2-broadcast  — broadcast-only, starting from the MAC checkpoint.
+#                              Requires checkpoints/marbertv2/ uploaded to this session.
+#                              Lower LR (5e-6), 5 epochs, smaller batch.
+#                              Est. ~5 min on T4 (dataset is only ~400 examples).
+#
+# Step 0 (local, done once): annotate 500 utterances with Gemini, commit the CSV.
+#   export GEMINI_API_KEY="AIza..."
+#   python src/annotate_gemini.py         # writes data/test_sets/broadcast_train_raw.csv
+#   git add data/test_sets/broadcast_train_raw.csv && git commit -m "feat: add broadcast annotations"
+#   git push
+# Then clone/pull on Kaggle (cells 1-2 already handle this).
+# ─────────────────────────────────────────────────────────────────────────────
+
+# %% 20 — [Option 2 / Strategy A] Fine-tune marbertv2-mixed (MAC + broadcast)
+# Requires: broadcast_train_raw.csv committed to the repo (pull handled by cell 2).
+
+import os, sys, time
+sys.path.insert(0, os.path.join(REPO, "src"))
+
+from src.finetune import finetune
+
+STRATEGY = "marbertv2-mixed"    # ← change to "marbertv2-broadcast" for Strategy B
+
+print(f"Option 2 / Strategy: {STRATEGY}")
+t0 = time.time()
+finetune(STRATEGY)
+print(f"\nTotal wall time: {(time.time()-t0)/60:.1f} min")
+
+
+# %% 21 — [Option 2 / Strategy B setup] Upload the MAC checkpoint
+# Strategy B starts from checkpoints/marbertv2/ (already fine-tuned on MAC).
+# Upload the checkpoint zip to Kaggle as a Dataset, then mount it here.
+# OR: if the checkpoints/ folder is in the repo via Git LFS, this cell is a no-op.
+
+import os, shutil
+
+WORK = "/kaggle/working"
+CKPT_SRC = "/kaggle/input/haca-marbertv2-checkpoint/marbertv2"   # ← adjust dataset path
+CKPT_DST = os.path.join(REPO, "checkpoints", "marbertv2")
+
+if os.path.isdir(CKPT_SRC) and not os.path.isdir(CKPT_DST):
+    shutil.copytree(CKPT_SRC, CKPT_DST)
+    print(f"Checkpoint copied: {CKPT_DST}")
+elif os.path.isdir(CKPT_DST):
+    print(f"Checkpoint already present: {CKPT_DST}")
+else:
+    print(f"[WARN] Checkpoint not found at {CKPT_SRC}. Strategy B will fail.\n"
+          "       Upload the checkpoint as a Kaggle dataset or switch to Strategy A.")
+
+
+# %% 22 — [Option 2] Show domaine_reel_v2 result
+# Both strategies evaluate on domaine_reel_v2 automatically after training.
+
+import json, os
+
+RESULTS = os.path.join(REPO, "results")
+TARGET  = "domaine_reel_v2"      # frozen broadcast test set
+
+print(f"\n=== Option 2 results on {TARGET} ===\n")
+for strategy in ["marbertv2-mixed", "marbertv2-broadcast"]:
+    fname = f"{strategy}_{TARGET}.json"
+    path  = os.path.join(RESULTS, fname)
+    if not os.path.exists(path):
+        continue
+    d = json.load(open(path))
+    mf1 = d["macro_f1"]
+    status = "✓ TARGET MET" if mf1 >= 0.70 else f"✗ {0.70 - mf1:.3f} below target"
+    print(f"{strategy}:")
+    print(f"  macro-F1 on v2 : {mf1:.4f}  {status}")
+    print(f"  n              : {d['n']}")
+    cr = d.get("classification_report", {})
+    for c in ["neg", "neu", "pos"]:
+        if c in cr:
+            print(f"  {c}  P={cr[c]['precision']:.3f}  R={cr[c]['recall']:.3f}  "
+                  f"F1={cr[c]['f1-score']:.3f}  n={int(cr[c]['support'])}")
+    print()
+
+# Also check regression on darija_ar benchmark
+print("=== Regression check on darija_ar ===\n")
+for strategy in ["marbertv2-mixed", "marbertv2-broadcast"]:
+    fname = f"{strategy}_darija_ar.json"
+    path  = os.path.join(RESULTS, fname)
+    if not os.path.exists(path):
+        continue
+    d = json.load(open(path))
+    print(f"{strategy}  darija_ar macro-F1: {d['macro_f1']:.4f}  "
+          f"(baseline marbertv2: 0.8441)")
+
+
+# %% 23 — [Option 2] Package Option 2 checkpoints for download
+
+import shutil, os
+
+WORK = "/kaggle/working"
+for strategy in ["marbertv2-mixed", "marbertv2-broadcast"]:
+    ckpt_src = os.path.join(REPO, "checkpoints", strategy)
+    if not os.path.isdir(ckpt_src):
+        print(f"[SKIP] {strategy} — checkpoint not found")
+        continue
+    zip_dest  = os.path.join(WORK, f"checkpoint_{strategy}")
+    zip_final = zip_dest + ".zip"
+    shutil.make_archive(zip_dest, "zip", ckpt_src)
+    size_mb = os.path.getsize(zip_final) / 1024 ** 2
+    print(f"Zipped {strategy}: {zip_final}  ({size_mb:.0f} MB)")
+
+
 # %% 12 — (Optional) Run all four models in sequence
 # Uncomment to run everything in one long session (~2 h on T4).
 # Only do this if you have enough quota and the session won't time out.
