@@ -1,0 +1,68 @@
+{
+  "model": "camelbert-da",
+  "lang": "domaine_reel",
+  "n": 194,
+  "macro_f1": 0.3063,
+  "latency_ms_per_utt": 242.824,
+  "peak_vram_mb": 0.0,
+  "classes_evaluated": [
+    "neg",
+    "neu",
+    "pos"
+  ],
+  "classification_report": {
+    "neg": {
+      "precision": 0.2413793103448276,
+      "recall": 0.9210526315789473,
+      "f1-score": 0.3825136612021858,
+      "support": 38.0
+    },
+    "neu": {
+      "precision": 0.9666666666666667,
+      "recall": 0.19863013698630136,
+      "f1-score": 0.32954545454545453,
+      "support": 146.0
+    },
+    "pos": {
+      "precision": 0.15789473684210525,
+      "recall": 0.3,
+      "f1-score": 0.20689655172413793,
+      "support": 10.0
+    },
+    "accuracy": 0.34536082474226804,
+    "macro avg": {
+      "precision": 0.45531357128453315,
+      "recall": 0.47322758952174954,
+      "f1-score": 0.3063185558239261,
+      "support": 194.0
+    },
+    "weighted avg": {
+      "precision": 0.7829107963652465,
+      "recall": 0.34536082474226804,
+      "f1-score": 0.3335985618894886,
+      "support": 194.0
+    }
+  },
+  "confusion_matrix": [
+    [
+      35,
+      1,
+      2
+    ],
+    [
+      103,
+      29,
+      14
+    ],
+    [
+      7,
+      0,
+      3
+    ]
+  ],
+  "confusion_matrix_labels": [
+    "neg",
+    "neu",
+    "pos"
+  ]
+}

@@ -1,0 +1,70 @@
+{
+  "model": "marbertv2",
+  "lang": "domaine_reel",
+  "checkpoint": "/home/martcm/Desktop/Dev/Stages/HACA/benchmark/checkpoints/marbertv2/checkpoint-1311",
+  "n": 194,
+  "macro_f1": 0.4411,
+  "latency_ms_per_utt": 267.665,
+  "peak_vram_mb": 0.0,
+  "n_params": 162843651,
+  "classes_evaluated": [
+    "neg",
+    "neu",
+    "pos"
+  ],
+  "classification_report": {
+    "neg": {
+      "precision": 0.4,
+      "recall": 0.15789473684210525,
+      "f1-score": 0.22641509433962265,
+      "support": 38.0
+    },
+    "neu": {
+      "precision": 0.7724550898203593,
+      "recall": 0.8835616438356164,
+      "f1-score": 0.8242811501597445,
+      "support": 146.0
+    },
+    "pos": {
+      "precision": 0.25,
+      "recall": 0.3,
+      "f1-score": 0.2727272727272727,
+      "support": 10.0
+    },
+    "accuracy": 0.711340206185567,
+    "macro avg": {
+      "precision": 0.47415169660678647,
+      "recall": 0.44715212689257394,
+      "f1-score": 0.4411411724088799,
+      "support": 194.0
+    },
+    "weighted avg": {
+      "precision": 0.672569294400889,
+      "recall": 0.711340206185567,
+      "f1-score": 0.6787427537912426,
+      "support": 194.0
+    }
+  },
+  "confusion_matrix": [
+    [
+      6,
+      32,
+      0
+    ],
+    [
+      8,
+      129,
+      9
+    ],
+    [
+      1,
+      6,
+      3
+    ]
+  ],
+  "confusion_matrix_labels": [
+    "neg",
+    "neu",
+    "pos"
+  ]
+}

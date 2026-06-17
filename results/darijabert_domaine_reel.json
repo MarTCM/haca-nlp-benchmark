@@ -1,0 +1,68 @@
+{
+  "model": "darijabert",
+  "lang": "domaine_reel",
+  "n": 194,
+  "macro_f1": 0.4391,
+  "latency_ms_per_utt": 250.056,
+  "peak_vram_mb": 0.0,
+  "classes_evaluated": [
+    "neg",
+    "neu",
+    "pos"
+  ],
+  "classification_report": {
+    "neg": {
+      "precision": 0.3541666666666667,
+      "recall": 0.4473684210526316,
+      "f1-score": 0.3953488372093023,
+      "support": 38.0
+    },
+    "neu": {
+      "precision": 0.7954545454545454,
+      "recall": 0.7191780821917808,
+      "f1-score": 0.7553956834532374,
+      "support": 146.0
+    },
+    "pos": {
+      "precision": 0.14285714285714285,
+      "recall": 0.2,
+      "f1-score": 0.16666666666666666,
+      "support": 10.0
+    },
+    "accuracy": 0.6391752577319587,
+    "macro avg": {
+      "precision": 0.43082611832611833,
+      "recall": 0.4555155010814708,
+      "f1-score": 0.4391370624430688,
+      "support": 194.0
+    },
+    "weighted avg": {
+      "precision": 0.6753776721560226,
+      "recall": 0.6391752577319587,
+      "f1-score": 0.6545241869319217,
+      "support": 194.0
+    }
+  },
+  "confusion_matrix": [
+    [
+      17,
+      21,
+      0
+    ],
+    [
+      29,
+      105,
+      12
+    ],
+    [
+      2,
+      6,
+      2
+    ]
+  ],
+  "confusion_matrix_labels": [
+    "neg",
+    "neu",
+    "pos"
+  ]
+}
