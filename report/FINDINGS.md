@@ -402,6 +402,26 @@ Le plafond est donc surtout un problème **d'alignement d'annotation + sources n
 échantillon**, pas un problème de modèle. Viser 0.70 sur ce jeu précis n'est pas équitable tant
 qu'il n'est pas reconstruit sous la même rubrique.
 
+#### 8.4 bis — Étude de cohérence d'annotation (v2 humain vs v3 rubrique)
+Pour quantifier la subjectivité, les **194 mêmes énoncés** ont été ré-étiquetés sous la
+rubrique v3 (`src/apply_annotations_domaine_reel_v3.py` → `domaine_reel_v3.csv`).
+
+| | neg | neu | pos |
+|---|---|---|---|
+| v2 (humain) | 63 | 111 | 20 |
+| v3 (rubrique, Claude) | 45 | 133 | 16 |
+
+- **Accord 88.7 %, kappa de Cohen = 0.784** (« substantiel »).
+- Les 22 changements vont **tous vers neu** (18 neg→neu, 4 pos→neu) : fragments ASR illisibles
+  et cas-limites (un service qui existe, une interdiction de fumer, un mécanisme de préférence).
+- **La classe positive passe de 20 à 16** — soit 20 % de variation sur la classe critique.
+
+Conséquence : on **ne peut pas mesurer de façon fiable une classe positive de 16–20 exemples**
+quand une annotation à kappa 0.78 la fait bouger de 20 %. C'est la limite dure du benchmark
+actuel. `domaine_reel_v3.csv` est un **artefact de cohérence** (annoté par Claude, même rubrique
+que l'entraînement → biais d'alignement) à faire **adjuger par un second annotateur humain**
+avant de servir de gold officiel ; le v2 humain reste le gold indépendant.
+
 ### 8.5 Recommandation révisée
 - **Déploiement** : pour une tâche de *content-valence*, privilégier un **LLM instructable avec
   la rubrique en prompt** (Atlas-Chat) si la détection du positif compte — c'est le seul à la

@@ -30,7 +30,7 @@ from atlas_chat import build_quantized_model, MODEL_IDS
 
 set_seeds()
 
-GOLD = "data/test_sets/domaine_reel_v2.csv"
+DEFAULT_GOLD = "data/test_sets/domaine_reel_v2.csv"
 LABEL_RE = re.compile(r"\b(positif|neutre|negatif)\b", re.IGNORECASE)
 
 # Rubric v3 (content-valence) + few-shot, in Arabic. The model is TOLD the rule.
@@ -67,7 +67,11 @@ def predict_one(text, tokenizer, model):
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--model", default="2b", choices=list(MODEL_IDS))
+    ap.add_argument("--test", default=DEFAULT_GOLD,
+                    help="Gold CSV to evaluate on (e.g. data/test_sets/domaine_reel_v3.csv).")
     args = ap.parse_args()
+    GOLD = args.test
+    test_tag = os.path.splitext(os.path.basename(GOLD))[0]
 
     model_id = MODEL_IDS[args.model]
     print(f"\n=== Atlas-Chat-{args.model.upper()} [rubric-prompted] on {GOLD} ===")
@@ -95,7 +99,7 @@ def main():
                 preds.append("neu")
 
     evaluate_model(
-        f"atlas-chat-{args.model}-rubric", "domaine_reel_v2",
+        f"atlas-chat-{args.model}-rubric", test_tag,
         lambda texts_: preds[: len(texts_)],
         model_obj=model,
         extra_meta={"prompt": "rubric-v3+fewshot",
