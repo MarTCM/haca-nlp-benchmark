@@ -1,5 +1,11 @@
 # Domaine-Réel Test Set — Annotation Rules & Provenance
 
+> **Note (2026-06):** This document records the **v1** speaker-sentiment rules used to build
+> `domaine_reel.csv`. The **canonical** labeling rule for all *new* HACA data
+> (training pool + synthetic) is now content-valence — see
+> [ANNOTATION_RUBRIC_V3.md](ANNOTATION_RUBRIC_V3.md). The frozen gold test
+> `domaine_reel_v2.csv` already follows the content-valence philosophy.
+
 **Author:** Marwane ElBaraka
 **File:** `data/test_sets/domaine_reel.csv`
 **Size:** 194 utterances

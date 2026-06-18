@@ -30,16 +30,19 @@ from transformers import pipeline, AutoTokenizer
 sys.path.insert(0, os.path.dirname(__file__))
 from label_maps import FINETUNED_MAP, apply_map
 
-TEST_CSV = "data/test_sets/domaine_reel.csv"
+DEFAULT_TEST_CSV = "data/test_sets/domaine_reel_v2.csv"   # canonical gold (content-valence)
 DEVICE   = 0 if torch.cuda.is_available() else -1
 BATCH    = 16
 N_FOLDS  = 5
 CLASSES  = ["neg", "neu", "pos"]
 
 MODEL_REGISTRY = {
-    "marbertv2":  ("checkpoints/marbertv2/checkpoint-1311",  "UBC-NLP/MARBERTv2"),
-    "darijabert": ("checkpoints/darijabert/checkpoint-1311", "SI2M-Lab/DarijaBERT"),
-    "qarib":      ("checkpoints/qarib/checkpoint-1311",      "qarib/bert-base-qarib"),
+    "marbertv2":      ("checkpoints/marbertv2/checkpoint-1311",  "UBC-NLP/MARBERTv2"),
+    "darijabert":     ("checkpoints/darijabert/checkpoint-1311", "SI2M-Lab/DarijaBERT"),
+    "qarib":          ("checkpoints/qarib/checkpoint-1311",      "qarib/bert-base-qarib"),
+    # Stage 5 (v3) — best model saved directly to checkpoints/<key>
+    "marbertv2-haca":  ("checkpoints/marbertv2-haca",  "UBC-NLP/MARBERTv2"),
+    "darijabert-haca": ("checkpoints/darijabert-haca", "SI2M-Lab/DarijaBERT"),
 }
 
 # Grid: T_neg and T_pos from 0.05 to 0.60 — 12×12 = 144 combinations
@@ -86,9 +89,12 @@ def grid_search(scores_list: list, y_true: list) -> tuple:
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--model", default="marbertv2", choices=list(MODEL_REGISTRY))
+    parser.add_argument("--test-csv", default=DEFAULT_TEST_CSV,
+                        help="Gold test set to calibrate/evaluate on (default: domaine_reel_v2).")
     args = parser.parse_args()
 
     model_path, tok_src = MODEL_REGISTRY[args.model]
+    TEST_CSV = args.test_csv
 
     df     = pd.read_csv(TEST_CSV)
     texts  = df["text"].tolist()

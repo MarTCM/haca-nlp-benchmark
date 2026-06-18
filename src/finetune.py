@@ -40,6 +40,7 @@ DATA_DIR        = os.path.join(os.path.dirname(__file__), "..", "data", "test_se
 RAW_DIR         = os.path.join(os.path.dirname(__file__), "..", "data", "raw")
 CKPT_DIR        = os.path.join(os.path.dirname(__file__), "..", "checkpoints")
 BROADCAST_TRAIN = os.path.join(DATA_DIR, "broadcast_train_raw.csv")
+HACA_TRAIN      = os.path.join(DATA_DIR, "haca_train_v3.csv")   # Stage 4 output (v3)
 os.makedirs(CKPT_DIR, exist_ok=True)
 
 LABEL2ID = {"neg": 0, "neu": 1, "pos": 2}
@@ -76,6 +77,33 @@ MODELS = {
         "epochs":            5,
         "batch_size":        8,
         "use_class_weights": True,
+    },
+    # ── Stage 5 (v3): HACA-Sent — MAC + cleaned/labelled SRT pool + synthetic ──
+    # Consumes data/test_sets/haca_train_v3.csv (build_haca_train.py).
+    # Class-weighted focal loss to fight the neu-dominant / pos-scarce imbalance.
+    "marbertv2-haca": {
+        "hub_id":            "UBC-NLP/MARBERTv2",
+        "train_lang":        "haca",
+        "eval_langs":        ["domaine_reel_v2", "darija_ar"],
+        "license_note":      "RESEARCH-ONLY — not for commercial use.",
+        "lr":                2e-5,
+        "epochs":            4,
+        "batch_size":        16,
+        "use_class_weights": True,
+        "focal_gamma":       2.0,
+        "pos_oversample":    3,      # repeat in-domain pos rows to amplify the rare class
+    },
+    # Permissive-licence alternative for HACA production (DarijaBERT).
+    "darijabert-haca": {
+        "hub_id":            "SI2M-Lab/DarijaBERT",
+        "train_lang":        "haca",
+        "eval_langs":        ["domaine_reel_v2", "darija_ar"],
+        "lr":                2e-5,
+        "epochs":            4,
+        "batch_size":        16,
+        "use_class_weights": True,
+        "focal_gamma":       2.0,
+        "pos_oversample":    3,
     },
 }
 
@@ -192,6 +220,47 @@ def load_train_split_broadcast():
     return bc_tr.reset_index(drop=True), val_df.reset_index(drop=True)
 
 
+def load_train_split_haca(pos_oversample: int = 1):
+    """MAC training data + HACA-Sent v3 (cleaned SRT pool + synthetic), joint split.
+
+    HACA-Sent is already de-leaked against domaine_reel_v2 (build_haca_train.py); we
+    re-exclude by text as a belt-and-braces guard.  In-domain `pos` rows are optionally
+    repeated `pos_oversample` times in the TRAIN split to amplify the rare class.
+    """
+    import importlib, sys as _sys
+    _sys.path.insert(0, os.path.dirname(__file__))
+    bts = importlib.import_module("build_test_sets")
+    importlib.reload(bts)
+
+    mac_df  = bts.load_mac()
+    test_df = pd.read_csv(os.path.join(DATA_DIR, "darija_ar.csv"))
+    mac_df  = mac_df[~mac_df["text"].isin(set(test_df["text"]))].reset_index(drop=True)
+
+    if not os.path.exists(HACA_TRAIN):
+        raise FileNotFoundError(
+            f"HACA training data not found: {HACA_TRAIN}\n"
+            "Run:  python src/build_haca_train.py")
+    haca = pd.read_csv(HACA_TRAIN)
+    haca = haca[haca["label"].isin(LABEL2ID)][["text", "label"]].reset_index(drop=True)
+    frozen_v2 = pd.read_csv(os.path.join(DATA_DIR, "domaine_reel_v2.csv"))
+    haca = haca[~haca["text"].isin(set(frozen_v2["text"]))].reset_index(drop=True)
+
+    mac_tr, mac_va = train_test_split(mac_df, test_size=0.1, stratify=mac_df["label"], random_state=SEED)
+    hc_tr,  hc_va  = train_test_split(haca,   test_size=0.2, stratify=haca["label"],   random_state=SEED)
+
+    if pos_oversample and pos_oversample > 1:
+        extra = pd.concat([hc_tr[hc_tr["label"] == "pos"]] * (pos_oversample - 1), ignore_index=True)
+        hc_tr = pd.concat([hc_tr, extra], ignore_index=True)
+
+    train_df = pd.concat([mac_tr, hc_tr], ignore_index=True).sample(frac=1, random_state=SEED)
+    val_df   = pd.concat([mac_va, hc_va], ignore_index=True).sample(frac=1, random_state=SEED)
+
+    print(f"  haca train: {len(train_df)} (MAC={len(mac_tr)}, haca={len(hc_tr)} incl. x{pos_oversample} pos)")
+    print(f"  haca val  : {len(val_df)}   (MAC={len(mac_va)}, haca={len(hc_va)})")
+    print(f"  train dist: {dict(train_df['label'].value_counts())}")
+    return train_df.reset_index(drop=True), val_df.reset_index(drop=True)
+
+
 def compute_class_weights_tensor(train_df: pd.DataFrame) -> torch.Tensor:
     """Return a FloatTensor of class weights (inverse frequency, sklearn-style)."""
     labels = train_df["label"].map(LABEL2ID).values
@@ -201,19 +270,30 @@ def compute_class_weights_tensor(train_df: pd.DataFrame) -> torch.Tensor:
 
 
 class WeightedTrainer(Trainer):
-    """Trainer subclass that applies per-class weights to the cross-entropy loss."""
+    """Trainer with per-class-weighted cross-entropy, optionally focal (gamma>0).
 
-    def __init__(self, *args, class_weights: torch.Tensor | None = None, **kwargs):
+    Focal loss down-weights easy (well-classified) examples so the model focuses on the
+    hard minority classes — here the scarce broadcast `pos`/`neg`.
+    """
+
+    def __init__(self, *args, class_weights: torch.Tensor | None = None,
+                 focal_gamma: float = 0.0, **kwargs):
         super().__init__(*args, **kwargs)
         self._cw = class_weights
+        self._gamma = focal_gamma or 0.0
 
     def compute_loss(self, model, inputs, return_outputs=False, **kwargs):
         labels  = inputs.get("labels")
         outputs = model(**inputs)
-        if self._cw is not None and labels is not None:
+        if labels is not None and (self._cw is not None or self._gamma):
             logits = outputs.logits
-            weight = self._cw.to(logits.device, dtype=logits.dtype)
-            loss   = torch.nn.functional.cross_entropy(logits, labels, weight=weight)
+            weight = self._cw.to(logits.device, dtype=logits.dtype) if self._cw is not None else None
+            if self._gamma:
+                ce = torch.nn.functional.cross_entropy(logits, labels, weight=weight, reduction="none")
+                pt = torch.exp(-ce)
+                loss = ((1.0 - pt) ** self._gamma * ce).mean()
+            else:
+                loss = torch.nn.functional.cross_entropy(logits, labels, weight=weight)
         else:
             loss = outputs.loss
         return (loss, outputs) if return_outputs else loss
@@ -274,6 +354,8 @@ def finetune(model_key: str) -> None:
         train_df, val_df = load_train_split_mixed()
     elif train_lang == "broadcast":
         train_df, val_df = load_train_split_broadcast()
+    elif train_lang == "haca":
+        train_df, val_df = load_train_split_haca(cfg.get("pos_oversample", 1))
     else:
         train_df, val_df = load_train_split(train_lang)
     print(f"  train={len(train_df)}  val={len(val_df)}")
@@ -325,6 +407,7 @@ def finetune(model_key: str) -> None:
     )
     if use_cw:
         trainer_kwargs["class_weights"] = cw_tensor
+        trainer_kwargs["focal_gamma"] = cfg.get("focal_gamma", 0.0)
 
     trainer = TrainerClass(**trainer_kwargs)
 
