@@ -36,6 +36,12 @@ def get_classifier(choice: str):
     return hp.load_stub() if choice == "stub" else hp.load_encoder(choice)
 
 
+@st.cache_resource(show_spinner=False)
+def get_topic_detector(mode: str):
+    import topic_detect as td
+    return td.load_atlas_topic("2b") if mode.startswith("Atlas") else td.load_keyword_topic()
+
+
 def proportions_bar(props):
     fig, ax = plt.subplots(figsize=(7, 0.9))
     left = 0.0
@@ -65,9 +71,13 @@ def timeline_fig(segments, floor):
 # ── sidebar controls ─────────────────────────────────────────────────────────
 st.sidebar.header("Réglages")
 model_choice = st.sidebar.selectbox(
-    "Classifieur",
+    "Classifieur (tonalité)",
     ["stub", "marbertv2-haca", "darijabert-haca"],
     help="« stub » = démo sans modèle. Les encoders nécessitent un checkpoint entraîné.")
+topic_mode = st.sidebar.selectbox(
+    "Détection du sujet",
+    ["mots-clés (rapide)", "Atlas-Chat-2B (GPU)", "aucune"],
+    help="Atlas-Chat-2B nécessite un GPU (4-bit). « mots-clés » fonctionne partout, instantané.")
 floor = st.sidebar.slider("Seuil non-neutre (sensibilité)", 0.05, 0.50, hp.NONNEU_FLOOR, 0.05,
                           help="Part minimale de négatif/positif pour basculer le verdict. "
                                "Plus bas = plus sensible.")
@@ -91,17 +101,26 @@ hp.WINDOW = window
 with tempfile.NamedTemporaryFile(suffix=".srt", delete=False) as tf:
     tf.write(up.read()); tmp = tf.name
 
+topic = None
 try:
-    with st.spinner(f"Analyse avec « {model_choice} »…"):
+    with st.spinner(f"Analyse de la tonalité avec « {model_choice} »…"):
         predict_proba, thr = get_classifier(model_choice)
         rep = hp.process_file(tmp, predict_proba, thr)
+    if topic_mode != "aucune":
+        _, rows = hp.segment_srt(tmp)
+        clean_text = " ".join(r["text"] for r in rows if r["clean"])
+        if clean_text:
+            with st.spinner(f"Détection du sujet ({topic_mode})…"):
+                topic = get_topic_detector(topic_mode)(clean_text)
 finally:
     os.unlink(tmp)
 
 p = rep["programme"]
 tone = p["tone"]
 
-# ── headline verdict ─────────────────────────────────────────────────────────
+# ── headline: subject + verdict ──────────────────────────────────────────────
+if topic:
+    st.markdown(f"### 🏷️ Sujet : `{topic}`")
 st.markdown(f"### Verdict émission : "
             f"<span style='color:{COL[tone]}'>{LABEL_FR[tone]}</span> "
             f"<span style='color:#888;font-size:0.7em'>({p['tone_label']})</span>",

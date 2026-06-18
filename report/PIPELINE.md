@@ -161,6 +161,11 @@ streamlit run src/dashboard_app.py
 Choose **stub** for a no-model demo (runs anywhere), or an encoder (`marbertv2-haca`) if the
 checkpoint is present. The slider re-computes the verdict live.
 
+It also shows the **subject** of the programme (`src/topic_detect.py`): **Atlas-Chat-2B**
+(Darija LLM, needs a GPU) or a fast **keyword** taxonomy (CPU, instant) — so each verdict reads
+e.g. *"Sujet: Corruption · Verdict: NÉGATIF"*. Keyword topics on the source files: 8.srt →
+Corruption, 5.srt → Bourse, 7769 → Politique, 6.srt → Religion, 10.srt → Santé.
+
 ## 5. Tuning the review behaviour
 Three constants at the top of `haca_pipeline.py` control how aggressive the abstention is:
 - `WINDOW` (12) — utterances per segment (bigger = smoother, fewer segments);
