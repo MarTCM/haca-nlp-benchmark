@@ -150,6 +150,17 @@ Options: `--srt` (one file) or `--srt-dir` (a folder); `--model` (checkpoint nam
 
 ---
 
+## 4b. Web dashboard (upload an SRT in a browser)
+A simple UI wraps the pipeline: upload a `.srt`, see the verdict, the neg/neu/pos percentages,
+the per-segment timeline, a segment table, and a CSV download — with a **sensitivity slider**
+(the non-neutral floor) and a classifier picker.
+```bash
+pip install streamlit
+streamlit run src/dashboard_app.py
+```
+Choose **stub** for a no-model demo (runs anywhere), or an encoder (`marbertv2-haca`) if the
+checkpoint is present. The slider re-computes the verdict live.
+
 ## 5. Tuning the review behaviour
 Three constants at the top of `haca_pipeline.py` control how aggressive the abstention is:
 - `WINDOW` (12) — utterances per segment (bigger = smoother, fewer segments);
