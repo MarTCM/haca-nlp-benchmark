@@ -131,7 +131,12 @@ python src/haca_pipeline.py --srt-dir data/raw/srt --model marbertv2-haca \
 
 # plumbing test without a model (keyword classifier)
 python src/haca_pipeline.py --srt-dir data/raw/srt --stub
+
+# presentation plots from a report (overview bar chart + per-programme timelines)
+python src/tonality_plot.py --json tonality.json --out-dir tonality_plots
 ```
+A rendered example (real `marbertv2-haca` output) is committed in
+[`report/sample_tonality/`](sample_tonality/) — `overview.png` + timelines + `tonality.csv`.
 Options: `--srt` (one file) or `--srt-dir` (a folder); `--model` (checkpoint name, default
 `marbertv2-haca`); `--out` / `--out-dir` (JSON); `--csv` (dashboard); `--stub` (no model).
 
