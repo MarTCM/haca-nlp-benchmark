@@ -1,0 +1,71 @@
+{
+  "model": "marbertv2-haca-only",
+  "lang": "domaine_reel_v2",
+  "n": 194,
+  "macro_f1": 0.4685,
+  "latency_ms_per_utt": 6.228,
+  "peak_vram_mb": 2626.1,
+  "n_params": 162843651,
+  "classes_evaluated": [
+    "neg",
+    "neu",
+    "pos"
+  ],
+  "classification_report": {
+    "neg": {
+      "precision": 0.8275862068965517,
+      "recall": 0.38095238095238093,
+      "f1-score": 0.5217391304347826,
+      "support": 63.0
+    },
+    "neu": {
+      "precision": 0.6493506493506493,
+      "recall": 0.9009009009009009,
+      "f1-score": 0.7547169811320755,
+      "support": 111.0
+    },
+    "pos": {
+      "precision": 0.18181818181818182,
+      "recall": 0.1,
+      "f1-score": 0.12903225806451613,
+      "support": 20.0
+    },
+    "accuracy": 0.6494845360824743,
+    "macro avg": {
+      "precision": 0.5529183460217942,
+      "recall": 0.46061776061776066,
+      "f1-score": 0.468496123210458,
+      "support": 194.0
+    },
+    "weighted avg": {
+      "precision": 0.6590320450967447,
+      "recall": 0.6494845360824743,
+      "f1-score": 0.6145556457955774,
+      "support": 194.0
+    }
+  },
+  "confusion_matrix": [
+    [
+      24,
+      37,
+      2
+    ],
+    [
+      4,
+      100,
+      7
+    ],
+    [
+      1,
+      17,
+      2
+    ]
+  ],
+  "confusion_matrix_labels": [
+    "neg",
+    "neu",
+    "pos"
+  ],
+  "gpu_train_minutes": 3.7,
+  "checkpoint": "/kaggle/working/benchmark/src/../checkpoints/marbertv2-haca-only"
+}

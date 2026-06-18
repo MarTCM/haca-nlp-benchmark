@@ -1,0 +1,73 @@
+{
+  "model": "atlas-chat-2b-rubric",
+  "lang": "domaine_reel_v2",
+  "n": 194,
+  "macro_f1": 0.4927,
+  "latency_ms_per_utt": 283.976,
+  "peak_vram_mb": 0.0,
+  "n_params": 1602203904,
+  "classes_evaluated": [
+    "neg",
+    "neu",
+    "pos"
+  ],
+  "classification_report": {
+    "neg": {
+      "precision": 0.6190476190476191,
+      "recall": 0.6190476190476191,
+      "f1-score": 0.6190476190476191,
+      "support": 63.0
+    },
+    "neu": {
+      "precision": 0.734375,
+      "recall": 0.42342342342342343,
+      "f1-score": 0.5371428571428571,
+      "support": 111.0
+    },
+    "pos": {
+      "precision": 0.208955223880597,
+      "recall": 0.7,
+      "f1-score": 0.3218390804597701,
+      "support": 20.0
+    },
+    "accuracy": 0.5154639175257731,
+    "macro avg": {
+      "precision": 0.5207926143094054,
+      "recall": 0.5808236808236809,
+      "f1-score": 0.49267651888341546,
+      "support": 194.0
+    },
+    "weighted avg": {
+      "precision": 0.6427563375134636,
+      "recall": 0.5154639175257731,
+      "f1-score": 0.5415445296497554,
+      "support": 194.0
+    }
+  },
+  "confusion_matrix": [
+    [
+      39,
+      15,
+      9
+    ],
+    [
+      20,
+      47,
+      44
+    ],
+    [
+      4,
+      2,
+      14
+    ]
+  ],
+  "confusion_matrix_labels": [
+    "neg",
+    "neu",
+    "pos"
+  ],
+  "prompt": "rubric-v3+fewshot",
+  "non_response_rate": 0.0103,
+  "model_size": "2b",
+  "quantization": "4bit-nf4"
+}

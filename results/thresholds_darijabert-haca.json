@@ -1,0 +1,79 @@
+{
+  "model": "darijabert-haca",
+  "dataset": "domaine_reel",
+  "n": 194,
+  "default_macro_f1": 0.4534,
+  "calibrated_macro_f1_full": 0.5231,
+  "cv_default_mean": 0.4402,
+  "cv_default_std": 0.0553,
+  "cv_calib_mean": 0.4689,
+  "cv_calib_std": 0.0414,
+  "cv_gain": 0.0287,
+  "thresholds": {
+    "neg": 0.2,
+    "neu": 0.5,
+    "pos": 0.1
+  },
+  "fold_thresholds": [
+    {
+      "neg": 0.05,
+      "pos": 0.05
+    },
+    {
+      "neg": 0.1,
+      "pos": 0.1
+    },
+    {
+      "neg": 0.2,
+      "pos": 0.1
+    },
+    {
+      "neg": 0.2,
+      "pos": 0.1
+    },
+    {
+      "neg": 0.2,
+      "pos": 0.55
+    }
+  ],
+  "per_class_calibrated": {
+    "neg": {
+      "precision": 0.6538,
+      "recall": 0.5397,
+      "f1-score": 0.5913,
+      "support": 63.0
+    },
+    "neu": {
+      "precision": 0.6774,
+      "recall": 0.7568,
+      "f1-score": 0.7149,
+      "support": 111.0
+    },
+    "pos": {
+      "precision": 0.2778,
+      "recall": 0.25,
+      "f1-score": 0.2632,
+      "support": 20.0
+    }
+  },
+  "per_class_default": {
+    "neg": {
+      "precision": 0.6389,
+      "recall": 0.3651,
+      "f1-score": 0.4646,
+      "support": 63.0
+    },
+    "neu": {
+      "precision": 0.6233,
+      "recall": 0.8198,
+      "f1-score": 0.7082,
+      "support": 111.0
+    },
+    "pos": {
+      "precision": 0.25,
+      "recall": 0.15,
+      "f1-score": 0.1875,
+      "support": 20.0
+    }
+  }
+}
