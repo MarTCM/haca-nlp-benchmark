@@ -422,6 +422,29 @@ actuel. `domaine_reel_v3.csv` est un **artefact de cohérence** (annoté par Cla
 que l'entraînement → biais d'alignement) à faire **adjuger par un second annotateur humain**
 avant de servir de gold officiel ; le v2 humain reste le gold indépendant.
 
+**Ré-évaluation sur le gold v3 — une hypothèse réfutée.** On a re-scoré les modèles sur v3 :
+
+| Modèle | macro-F1 (v2) | macro-F1 (v3) | F1 pos (v3, n=16) |
+|---|---|---|---|
+| MARBERTv2-haca — défaut | 0.459 | **0.452** | 0.077 |
+| MARBERTv2-haca — calibré | 0.521 | **0.518** | 0.138 |
+| Atlas-Chat-2B — rubrique | 0.493 | **0.452** | 0.289 |
+
+Contrairement à ce qu'on attendait, **ré-étiqueter sous une rubrique cohérente n'améliore pas
+l'encoder** (0.452 vs 0.459). Le plafond de l'encoder est donc **invariant à la version
+d'annotation** : l'écart n'est **pas** principalement un problème d'alignement (l'intuition de
+§8.4 est en partie réfutée), mais **structurel** — tâche difficile pour un encoder compact +
+classe positive non mesurable (1–2 corrects sur 16–20 quelle que soit la rubrique). Le LLM, lui,
+baisse sur v3 (0.452 vs 0.493) car v3 est plus neu-lourd et il **sous-prédit neu** (rappel
+neu = 0.41) ; son avantage sur v2 venait en partie de la moindre proportion de neutre. Sur v3
+(proportion de neutre proche du réel), **encoder calibré ≈ LLM-rubrique (~0.45–0.52)**.
+
+**Conclusion affinée :** sur ce contenu broadcast, tous les modèles plafonnent à ~0.45–0.52
+**quelle que soit la rubrique** ; la classe positive (16–20 ex., F1 0.08–0.32) est non mesurable.
+Ce plafond n'est réparable ni par ré-étiquetage ni par plus de données d'entraînement : il faut
+un **jeu d'évaluation plus grand, équilibré et multi-annotateur**, ce qui suppose d'élargir le
+corpus source (aujourd'hui limité à 12 fichiers pauvres en positif).
+
 ### 8.5 Recommandation révisée
 - **Déploiement** : pour une tâche de *content-valence*, privilégier un **LLM instructable avec
   la rubrique en prompt** (Atlas-Chat) si la détection du positif compte — c'est le seul à la
@@ -433,10 +456,17 @@ avant de servir de gold officiel ; le v2 humain reste le gold indépendant.
   Le jeu actuel (20 pos, pilote, mono-annotateur) ne mesure pas fiablement la classe positive.
 
 ### 8.6 Conclusion
-La *content-valence* est une tâche de **suivi de consigne** : un petit encoder plafonne (~0.52) et
-reste aveugle au positif, tandis qu'un LLM darija instructable, à qui on *donne* la règle, traite
-les trois classes de façon plus équilibrée. Le levier décisif n'est désormais ni le modèle ni la
-quantité de données, mais la **qualité et l'alignement du jeu d'évaluation**.
+Sur le contenu broadcast, **tous les modèles plafonnent à ~0.45–0.52** — encoder calibré et
+LLM-rubrique inclus — et ce **quelle que soit la rubrique d'annotation** (vérifié sur v2 et v3).
+L'encoder reste aveugle au positif ; le LLM le détecte mieux (rappel pos 0.70–0.75) mais
+sous-prédit le neutre, si bien que son avantage s'évapore dès que le jeu est neu-lourd (le cas
+réel). La *content-valence* est une tâche de **suivi de consigne** qui favorise un LLM
+instructable **quand le positif compte**, mais pour un flux majoritairement neutre l'**encoder
+calibré (~0.52, 100× plus rapide)** est le choix pragmatique. Surtout, le levier décisif n'est
+**ni le modèle, ni la quantité de données d'entraînement, ni le ré-étiquetage** : c'est la
+**taille et la représentativité du jeu d'évaluation** — une classe positive de 16–20 exemples
+(kappa 0.78) ne peut tout simplement pas être mesurée. Élargir le corpus source au-delà des 12
+fichiers actuels (pauvres en positif) est le préalable à tout progrès chiffrable.
 
 ---
 
