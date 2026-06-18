@@ -119,10 +119,13 @@ try:
         _, rows = hp.segment_srt(tmp)
         clean_rows = [r["text"] for r in rows if r["clean"]]
         full_text = " ".join(clean_rows)
-        # LLM backends: a short, spread sample (fast prefill). Keyword: the full text.
+        # LLM backends: opening (intros state the subject) + a spread, short prefill.
+        # Keyword: the full text (more keyword evidence = better).
         if topic_mode.startswith(("Ollama", "Atlas")) and clean_rows:
-            step = max(1, len(clean_rows) // 12)
-            src = " ".join(clean_rows[::step][:12])[:1500]
+            head = clean_rows[:4]
+            rest = clean_rows[4:]
+            step = max(1, len(rest) // 8)
+            src = " ".join(head + rest[::step][:8])[:1500]
         else:
             src = full_text
         if full_text:

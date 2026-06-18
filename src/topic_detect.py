@@ -43,12 +43,42 @@ def load_keyword_topic():
     return detect
 
 
-ATLAS_PROMPT = (
-    "أنت مساعد لتحليل المحتوى الإعلامي للهيئة العليا للاتصال السمعي البصري. "
-    "حدد الموضوع الرئيسي للنص التالي بكلمة أو كلمتين فقط "
-    "(مثلا: سياسة، فساد، صحة، اقتصاد، ضرائب، بورصة، صحراء، تاريخ، دين، رياضة، تعليم، ثقافة).\n"
+CATEGORIES = list(TOPIC_KEYWORDS) + ["Autre"]
+
+# Map a free-form LLM answer (French or Arabic) back to a taxonomy category.
+_ALIASES = {
+    "Corruption": ["corruption", "فساد", "رشو", "اختلاس"],
+    "Santé": ["sant", "صح", "طب", "مستشف", "health"],
+    "Fiscalité": ["fiscal", "ضريب", "ضرائب", "impôt", "tax"],
+    "Économie": ["econom", "اقتصاد", "نمو"],
+    "Bourse / Finance": ["bourse", "financ", "مالي", "بورص", "اسهم", "stock"],
+    "Marchés publics": ["march", "صفق", "عموم", "procurement", "appel"],
+    "Politique": ["politiqu", "politic", "سياس", "حكوم", "برلم", "حزب"],
+    "Sahara / Diplomatie": ["sahara", "صحراء", "diplo", "بوليزاريو"],
+    "Histoire": ["histoir", "history", "تاريخ", "تاريخي"],
+    "Religion": ["religi", "دين", "ديني", "تصوف", "روحان", "spirit", "islam"],
+    "Sport": ["sport", "رياض", "كرة", "منتخب", "football"],
+    "Éducation": ["éduc", "educ", "تعليم", "مدرس", "school"],
+}
+
+
+def snap_category(ans: str) -> str:
+    """Snap a free-form answer to a known category (FR or AR); else return it cleaned."""
+    a = (ans or "").strip().lower()
+    if not a:
+        return ""
+    for cat, keys in _ALIASES.items():
+        if any(k in a for k in keys):
+            return cat
+    return ans.strip()[:40]
+
+
+TOPIC_PROMPT = (
+    "صنّف الموضوع الرئيسي للنص التالي ضمن فئة واحدة فقط من هذه القائمة، "
+    "وأجب بالضبط باسم الفئة بدون أي شرح:\n"
+    + "، ".join(CATEGORIES) + "\n"
     "النص: {text}\n"
-    "الموضوع (كلمة أو كلمتين فقط):"
+    "الفئة:"
 )
 
 
@@ -65,7 +95,7 @@ def load_ollama_topic(model: str = "gemma2", host: str = "http://localhost:11434
     import requests
 
     def detect(text: str) -> str:
-        prompt = ATLAS_PROMPT.format(text=str(text)[:1200])   # short prefill = fast
+        prompt = TOPIC_PROMPT.format(text=str(text)[:1200])   # short prefill = fast
         r = requests.post(f"{host}/api/generate", json={
             "model": model, "prompt": prompt, "stream": False,
             "think": False,             # disable reasoning for "thinking" models (Qwen3 etc.)
@@ -79,7 +109,7 @@ def load_ollama_topic(model: str = "gemma2", host: str = "http://localhost:11434
         raw = re.sub(r"<think>.*$", " ", raw, flags=re.S)
         lines = [ln.strip(" .،؛:-\"'*`") for ln in raw.splitlines()]
         lines = [ln for ln in lines if ln]
-        return lines[0][:40] if lines else "غير محدد"
+        return snap_category(lines[0]) if lines else "غير محدد"
     return detect
 
 
@@ -91,14 +121,14 @@ def load_atlas_topic(size: str = "2b"):
     tok, model = build_quantized_model(MODEL_IDS[size])
 
     def detect(text: str) -> str:
-        prompt = ATLAS_PROMPT.format(text=str(text)[:1500])
+        prompt = TOPIC_PROMPT.format(text=str(text)[:1200])
         inputs = tok(prompt, return_tensors="pt").to(model.device)
         with torch.no_grad():
-            out = model.generate(**inputs, max_new_tokens=12, do_sample=False,
+            out = model.generate(**inputs, max_new_tokens=16, do_sample=False,
                                  pad_token_id=tok.eos_token_id)
         gen = tok.decode(out[0][inputs["input_ids"].shape[1]:], skip_special_tokens=True)
         ans = gen.strip().splitlines()[0].strip(" .،؛:-\"'") if gen.strip() else ""
-        return ans[:40] if ans else "غير محدد"
+        return snap_category(ans) if ans else "غير محدد"
     return detect
 
 
