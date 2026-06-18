@@ -61,19 +61,25 @@ def load_ollama_topic(model: str = "gemma2", host: str = "http://localhost:11434
     keeps it warm so subsequent calls are fast. Pass a SHORT sample as `text` (the topic
     only needs a representative excerpt — a long prefill is what makes it slow).
     """
+    import re
     import requests
 
     def detect(text: str) -> str:
         prompt = ATLAS_PROMPT.format(text=str(text)[:1200])   # short prefill = fast
         r = requests.post(f"{host}/api/generate", json={
             "model": model, "prompt": prompt, "stream": False,
-            "keep_alive": "10m",                              # keep the model warm
-            "options": {"num_predict": 16, "temperature": 0, "num_ctx": 2048}},
+            "think": False,             # disable reasoning for "thinking" models (Qwen3 etc.)
+            "keep_alive": "10m",        # keep the model warm
+            "options": {"num_predict": 32, "temperature": 0, "num_ctx": 2048}},
             timeout=timeout)
         r.raise_for_status()
-        ans = (r.json().get("response", "") or "").strip()
-        ans = ans.splitlines()[0].strip(" .،؛:-\"'") if ans else ""
-        return ans[:40] if ans else "غير محدد"
+        raw = r.json().get("response", "") or ""
+        # strip reasoning blocks (closed or cut-off by num_predict) from thinking models
+        raw = re.sub(r"<think>.*?</think>", " ", raw, flags=re.S)
+        raw = re.sub(r"<think>.*$", " ", raw, flags=re.S)
+        lines = [ln.strip(" .،؛:-\"'*`") for ln in raw.splitlines()]
+        lines = [ln for ln in lines if ln]
+        return lines[0][:40] if lines else "غير محدد"
     return detect
 
 
