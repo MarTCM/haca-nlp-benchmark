@@ -40,8 +40,21 @@ from build_haca_pool import utterances_for_file        # reuse the same segmenta
 CLASSES = ["neg", "neu", "pos"]
 WINDOW = 12          # utterances per segment (sliding window, non-overlapping)
 COVERAGE_MIN = 0.40  # below this share of clean utterances -> flag for review
-MAJORITY_MIN = 0.50  # below this dominant share -> no clear tone -> flag
 CONF_MIN = 0.50      # below this mean confidence -> flag
+# Headline tone = dominant NON-neutral lean, gated by this floor. Neutral utterances are
+# filler (definitions/transitions); a programme that is >= NONNEU_FLOOR negative is
+# negative-leaning even if neutral is the plurality. Tune for the regulator's recall/precision.
+NONNEU_FLOOR = 0.25
+TONE_LABEL = {"neg": "negative-leaning", "neu": "neutral", "pos": "positive-leaning"}
+
+
+def lean_tone(props: dict) -> str:
+    """Dominant non-neutral valence gated by NONNEU_FLOOR; else neutral."""
+    if props.get("neg", 0) >= NONNEU_FLOOR and props.get("neg", 0) >= props.get("pos", 0):
+        return "neg"
+    if props.get("pos", 0) >= NONNEU_FLOOR and props.get("pos", 0) > props.get("neg", 0):
+        return "pos"
+    return "neu"
 
 
 # ── classifiers (pluggable) ──────────────────────────────────────────────────
@@ -122,24 +135,28 @@ def aggregate(rows, thr):
     n_total, n_clean = len(rows), len(clean)
     coverage = n_clean / n_total if n_total else 0.0
     if n_clean == 0:
-        return {"dominant": "neu", "distribution": {c: 0 for c in CLASSES},
+        return {"tone": "neu", "tone_label": "neutral", "majority": "neu",
+                "distribution": {c: 0 for c in CLASSES},
                 "proportions": {c: 0.0 for c in CLASSES}, "confidence": 0.0,
                 "coverage": round(coverage, 3), "n_clean": 0, "n_total": n_total,
                 "flag_review": True, "review_reason": "no_intelligible_content"}
     counts = Counter(r["label"] for r in clean)
     dist = {c: counts.get(c, 0) for c in CLASSES}
     props = {c: round(dist[c] / n_clean, 3) for c in CLASSES}
-    dominant = max(CLASSES, key=lambda c: dist[c])
+    majority = max(CLASSES, key=lambda c: dist[c])   # raw plurality (transparency)
+    tone = lean_tone(props)                           # headline (non-neutral lean)
     conf = round(sum(r["conf"] for r in clean) / n_clean, 3)
 
     reasons = []
     if coverage < COVERAGE_MIN:
         reasons.append(f"low_coverage({coverage:.2f})")
-    if props[dominant] < MAJORITY_MIN:
-        reasons.append(f"no_clear_majority({props[dominant]:.2f})")
     if conf < CONF_MIN:
         reasons.append(f"low_confidence({conf:.2f})")
-    return {"dominant": dominant, "distribution": dist, "proportions": props,
+    # borderline lean (just over the floor, and neg≈pos) -> worth a human glance
+    if tone != "neu" and abs(props["neg"] - props["pos"]) < 0.10:
+        reasons.append("mixed_neg_pos")
+    return {"tone": tone, "tone_label": TONE_LABEL[tone], "majority": majority,
+            "distribution": dist, "proportions": props,
             "confidence": conf, "coverage": round(coverage, 3),
             "n_clean": n_clean, "n_total": n_total,
             "flag_review": bool(reasons), "review_reason": ";".join(reasons) or None}
@@ -172,12 +189,12 @@ def process_file(path, predict_proba, thr):
 def print_summary(rep):
     p = rep["programme"]
     flag = "  ⚠ REVIEW: " + (p["review_reason"] or "") if p["flag_review"] else ""
-    print(f"\n{rep['file']:14s}  tone={p['dominant'].upper():3s}  "
+    print(f"\n{rep['file']:14s}  tone={p['tone'].upper():3s} ({p['tone_label']})  "
           f"props={p['proportions']}  conf={p['confidence']}  "
           f"coverage={p['coverage']} ({p['n_clean']}/{p['n_total']}){flag}")
-    # segment timeline (compact)
+    # segment timeline (compact) — uses the lean tone
     line = "  timeline: " + " ".join(
-        ("·" if s["flag_review"] else {"neg": "▼", "neu": "■", "pos": "▲"}[s["dominant"]])
+        ("·" if s["flag_review"] else {"neg": "▼", "neu": "■", "pos": "▲"}[s["tone"]])
         for s in rep["segments"])
     print(line + "    (▲pos ■neu ▼neg ·review)")
 
@@ -213,15 +230,16 @@ def main():
         import csv
         with open(args.csv, "w", newline="", encoding="utf-8") as fh:
             w = csv.writer(fh)
-            w.writerow(["file", "level", "segment", "dominant", "p_neg", "p_neu", "p_pos",
-                        "confidence", "coverage", "n_clean", "n_total", "flag_review", "reason"])
+            w.writerow(["file", "level", "segment", "tone", "tone_label", "majority",
+                        "p_neg", "p_neu", "p_pos", "confidence", "coverage",
+                        "n_clean", "n_total", "flag_review", "reason"])
             for rep in reports:
                 for level, name, a in (
                     [("programme", "-", rep["programme"])]
                     + [("segment", f"{s['window'][0]}-{s['window'][1]}", s) for s in rep["segments"]]
                 ):
                     pr = a["proportions"]
-                    w.writerow([rep["file"], level, name, a["dominant"],
+                    w.writerow([rep["file"], level, name, a["tone"], a["tone_label"], a["majority"],
                                 pr["neg"], pr["neu"], pr["pos"], a["confidence"], a["coverage"],
                                 a["n_clean"], a["n_total"], a["flag_review"], a["review_reason"] or ""])
         print(f"Wrote dashboard CSV -> {args.csv}")

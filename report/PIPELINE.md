@@ -48,11 +48,26 @@ It is *not* a per-utterance classifier — it aggregates, and it abstains on noi
    utterance gets a label via **shifted argmax** (`score[c] − threshold[c]`) and a confidence
    (`max softmax`).
 4. **Aggregate.** A segment = `WINDOW` (default 12) consecutive utterances. For each segment and
-   for the whole programme, it counts the clean-utterance labels → distribution + dominant tone,
-   averages the confidences, and computes coverage = `n_clean / n_total`.
-5. **Flag.** `flag_review = True` if **coverage < 0.40** (too much was unintelligible) **or**
-   the dominant class is **< 50 %** of clean utterances (no clear tone) **or** mean **confidence
-   < 0.50**. The reason string says which.
+   for the whole programme, it counts the clean-utterance labels → distribution, averages the
+   confidences, computes coverage = `n_clean / n_total`, and derives the **headline tone**
+   (below).
+5. **Flag.** `flag_review = True` if **coverage < 0.40** (too much unintelligible) **or** mean
+   **confidence < 0.50** **or** the lean is borderline (`neg ≈ pos`, `mixed_neg_pos`).
+
+### The headline `tone` — non-neutral lean (important)
+Plain majority is **misleading** for this task: a corruption documentary is ~43 % negative
+sentences and ~53 % neutral *filler* (definitions, transitions, setup), so majority would call it
+"neutral". For a regulator, a programme that is **≥ `NONNEU_FLOOR` (default 0.25) negative is
+negative-leaning** even when neutral is the plurality — the signal is in the non-neutral content.
+
+So each report has two fields:
+- **`tone`** (the headline): `neg` if `p_neg ≥ 0.25` and `p_neg ≥ p_pos`; `pos` if `p_pos ≥ 0.25`
+  and `p_pos > p_neg`; else `neu`. Plus `tone_label` (e.g. "negative-leaning").
+- **`majority`**: the raw plurality (for transparency).
+
+Example on real output: `8.srt` (neg 0.43) → **tone=neg**, `7769.srt` (neg 0.41) → **neg**,
+`10.srt` (neg 0.28) → **neg**, while the explainers (neg < 0.12) stay **neu**. Lowering the floor
+to 0.20 would additionally flag `7770.srt` (neg 0.20).
 
 ---
 
@@ -72,8 +87,8 @@ One object per file:
 {
   "file": "8.srt", "fmt": "youtube",
   "programme": {
-    "dominant": "neg",
-    "distribution": {"neg": 56, "neu": 49, "pos": 3},
+    "tone": "neg", "tone_label": "negative-leaning", "majority": "neu",
+    "distribution": {"neg": 46, "neu": 59, "pos": 3},
     "proportions": {"neg": 0.519, "neu": 0.454, "pos": 0.028},
     "confidence": 0.61, "coverage": 0.864,
     "n_clean": 108, "n_total": 125,
@@ -86,14 +101,16 @@ One object per file:
 ```
 
 ### 3.3 Dashboard CSV (`--csv file.csv`) — one row per segment/programme
-Columns: `file, level, segment, dominant, p_neg, p_neu, p_pos, confidence, coverage, n_clean,
-n_total, flag_review, reason`. `level` is `programme` (segment = `-`) or `segment` (segment =
-`startIdx-endIdx`). **Import directly into Excel / Power BI** to build the tonality dashboard.
+Columns: `file, level, segment, tone, tone_label, majority, p_neg, p_neu, p_pos, confidence,
+coverage, n_clean, n_total, flag_review, reason`. `level` is `programme` (segment = `-`) or
+`segment` (segment = `startIdx-endIdx`). **Import directly into Excel / Power BI** for the
+dashboard — use `tone` as the headline column.
 
 ### 3.4 How to read a verdict
 | Field | Meaning | Use |
 |---|---|---|
-| `dominant` | most frequent tone among **clean** utterances | the headline tonality |
+| `tone` | non-neutral lean (gated by floor) | **the headline tonality** |
+| `majority` | raw plurality among clean utterances | transparency (often `neu`) |
 | `proportions` | share of neg/neu/pos | how mixed the segment is |
 | `coverage` | clean / total utterances | trust signal — low = noisy file |
 | `confidence` | mean max-softmax | trust signal — low = uncertain |
@@ -131,9 +148,11 @@ Options: `--srt` (one file) or `--srt-dir` (a folder); `--model` (checkpoint nam
 ## 5. Tuning the review behaviour
 Three constants at the top of `haca_pipeline.py` control how aggressive the abstention is:
 - `WINDOW` (12) — utterances per segment (bigger = smoother, fewer segments);
-- `COVERAGE_MIN` (0.40), `MAJORITY_MIN` (0.50), `CONF_MIN` (0.50) — raise them for a stricter
-  system (more goes to human review, higher precision on the rest); lower them for more
-  automation. Set these to match the human-review capacity HACA accepts.
+- **`NONNEU_FLOOR` (0.25)** — the key knob: minimum non-neutral share to call a programme
+  neg/pos-leaning. **Lower it (e.g. 0.20) to catch more** negative content (higher recall, e.g.
+  flags 7770.srt); raise it for higher precision. Set it to the sensitivity HACA wants.
+- `COVERAGE_MIN` (0.40), `CONF_MIN` (0.50) — raise for a stricter system (more goes to human
+  review, higher precision on the rest); lower for more automation.
 
 ---
 
