@@ -349,6 +349,77 @@ L'écart sur la darija est trop large pour recommander cette option en productio
 
 ---
 
+## 8. Adaptation au domaine — HACA-Sent v3 (juin 2026)
+
+Suite à la §5, le jeu d'entraînement in-domaine a été **entièrement reconstruit** pour combler
+l'écart broadcast, en visant surtout la classe positive (F1 = 0.19, le vrai goulot).
+
+### 8.1 Ce qui a changé
+- **Rubrique v3 canonique** (content-valence) : on étiquette ce que le contenu *décrit*, pas le
+  ton du présentateur ([ANNOTATION_RUBRIC_V3.md](ANNOTATION_RUBRIC_V3.md)).
+- **Ré-extraction qualité** (`src/build_haca_pool.py`) : découpage des longs paragraphes
+  YouTube, filtre de bruit ASR, et filtre d'anti-fuite (5-grammes) contre le jeu de test
+  → **1199 utterances propres**.
+- **Étiquetage manuel** des 1199 (neu 973 / neg 191 / pos 35) + **189 synthétiques**
+  pos-pondérées (129 pos) → `haca_train_v3.csv` : **1388 lignes** (neu 993 / neg 231 / pos 164).
+- Fine-tuning avec **perte focale pondérée par classe + sur-échantillonnage ×3–4 de pos**.
+- Provenance et limites détaillées : [HACA_DATASET.md](HACA_DATASET.md).
+
+### 8.2 Résultats — jeu domaine réel v2 (neg 63 / neu 111 / pos 20)
+
+| Modèle | macro-F1 | (calibré) | F1 neg | F1 neu | **F1 pos** | rappel pos | darija\_ar |
+|---|---|---|---|---|---|---|---|
+| MARBERTv2-haca (MAC + broadcast) | 0.459 | 0.521 | 0.500 | 0.744 | 0.133 | 0.10 | 0.835 |
+| MARBERTv2-haca-only (broadcast seul) | 0.469 | ~0.52 | 0.522 | 0.755 | 0.129 | 0.10 | 0.830 |
+| DarijaBERT-haca | 0.453 | 0.523 | 0.465 | 0.708 | 0.188 | 0.15 | 0.767 |
+| Atlas-Chat-2B (rubrique en prompt) | 0.493 | — | 0.619 | 0.537 | **0.322** | **0.70** | — |
+| Atlas-Chat-9B (rubrique en prompt) | **0.504** | — | 0.584 | 0.634 | 0.292 | 0.35 | — |
+| *(rappel §5) MARBERTv2 brut* | 0.380 | 0.503 | 0.226 | 0.824 | 0.273 | 0.30 | 0.844 |
+
+### 8.3 Constatations
+1. **Aucune régression sur darija_ar** (0.83) : les modèles restent excellents sur le texte propre.
+2. **Tous plafonnent à ~0.50–0.52** sur le broadcast. **L'objectif 0.70 n'est pas atteint.**
+3. **La classe pos reste le goulot pour les encoders** (F1 0.13–0.19) malgré pos ×4.7, perte
+   focale et sur-échantillonnage. Retirer MAC (haca-only) n'a rien changé — l'hypothèse selon
+   laquelle MAC polluait le signal positif était fausse.
+4. **Le LLM avec rubrique gère bien mieux la classe positive** (F1 0.29–0.32, rappel jusqu'à
+   0.70) car il *applique* la consigne au lieu de devoir l'apprendre.
+5. **Encoder calibré (~0.52) et LLM-rubrique (~0.50) à égalité en macro-F1**, mais profils
+   opposés : l'encoder excelle sur neu/neg et est aveugle au positif ; le LLM est le seul à
+   détecter pos.
+
+### 8.4 Pourquoi le plafond — le jeu de test est le facteur limitant
+L'inspection des 20 positifs du test l'explique :
+- **sources partiellement absentes** : certains positifs viennent de fichiers (`f1`, `d1`, `14`,
+  un `9.srt` « Sahara 2025 ») qui **ne sont pas dans le corpus SRT actuel** — le modèle ne les a
+  jamais vus ;
+- **frontière pos/neu différente de la rubrique v3** : le test compte comme « pos » des énoncés
+  que la rubrique v3 classe neu (un service qui existe, l'interdiction de fumer dans le train,
+  une incitation à l'investissement) ;
+- **20 positifs, un seul annotateur** → F1 pos à très haute variance.
+
+Le plafond est donc surtout un problème **d'alignement d'annotation + sources non vues + petit
+échantillon**, pas un problème de modèle. Viser 0.70 sur ce jeu précis n'est pas équitable tant
+qu'il n'est pas reconstruit sous la même rubrique.
+
+### 8.5 Recommandation révisée
+- **Déploiement** : pour une tâche de *content-valence*, privilégier un **LLM instructable avec
+  la rubrique en prompt** (Atlas-Chat) si la détection du positif compte — c'est le seul à la
+  gérer (rappel pos 0.35–0.70), au prix de la latence (~185–450 ms vs ~3 ms encoder). Sinon, un
+  **encoder fine-tuné + calibration de seuils** offre le même macro-F1 (~0.52) à 100× la vitesse,
+  mais avec un angle mort sur le positif.
+- **Étape réelle suivante** : **reconstruire le jeu de test broadcast** sous la rubrique v3 —
+  mêmes fichiers sources que l'entraînement, ≥ 50 positifs, deux annotateurs avec kappa de Cohen.
+  Le jeu actuel (20 pos, pilote, mono-annotateur) ne mesure pas fiablement la classe positive.
+
+### 8.6 Conclusion
+La *content-valence* est une tâche de **suivi de consigne** : un petit encoder plafonne (~0.52) et
+reste aveugle au positif, tandis qu'un LLM darija instructable, à qui on *donne* la règle, traite
+les trois classes de façon plus équilibrée. Le levier décisif n'est désormais ni le modèle ni la
+quantité de données, mais la **qualité et l'alignement du jeu d'évaluation**.
+
+---
+
 ## Annexes
 
 - Résultats détaillés par classe : `results/*.json`
