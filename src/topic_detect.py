@@ -52,19 +52,24 @@ ATLAS_PROMPT = (
 )
 
 
-def load_ollama_topic(model: str = "gemma2", host: str = "http://localhost:11434"):
+def load_ollama_topic(model: str = "gemma2", host: str = "http://localhost:11434",
+                      timeout: int = 240):
     """Topic detector via a LOCAL Ollama server — fast on integrated GPUs (GGUF).
 
-    Run any 3-7B instruct model you have pulled, e.g.:  ollama pull gemma2
-    (Atlas-Chat too if you've made/pulled a GGUF of it). Needs `ollama serve` running.
+    Run any 3-7B instruct model you have pulled, e.g.:  ollama pull qwen2.5:3b
+    Needs `ollama serve` running. The first call loads the model (slow); `keep_alive`
+    keeps it warm so subsequent calls are fast. Pass a SHORT sample as `text` (the topic
+    only needs a representative excerpt — a long prefill is what makes it slow).
     """
     import requests
 
     def detect(text: str) -> str:
-        prompt = ATLAS_PROMPT.format(text=str(text)[:2000])
+        prompt = ATLAS_PROMPT.format(text=str(text)[:1200])   # short prefill = fast
         r = requests.post(f"{host}/api/generate", json={
             "model": model, "prompt": prompt, "stream": False,
-            "options": {"num_predict": 16, "temperature": 0}}, timeout=120)
+            "keep_alive": "10m",                              # keep the model warm
+            "options": {"num_predict": 16, "temperature": 0, "num_ctx": 2048}},
+            timeout=timeout)
         r.raise_for_status()
         ans = (r.json().get("response", "") or "").strip()
         ans = ans.splitlines()[0].strip(" .،؛:-\"'") if ans else ""

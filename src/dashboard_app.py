@@ -117,16 +117,25 @@ try:
         rep = hp.process_file(tmp, predict_proba, thr)
     if topic_mode != "aucune":
         _, rows = hp.segment_srt(tmp)
-        clean_text = " ".join(r["text"] for r in rows if r["clean"])
-        if clean_text:
+        clean_rows = [r["text"] for r in rows if r["clean"]]
+        full_text = " ".join(clean_rows)
+        # LLM backends: a short, spread sample (fast prefill). Keyword: the full text.
+        if topic_mode.startswith(("Ollama", "Atlas")) and clean_rows:
+            step = max(1, len(clean_rows) // 12)
+            src = " ".join(clean_rows[::step][:12])[:1500]
+        else:
+            src = full_text
+        if full_text:
             try:
-                with st.spinner(f"Détection du sujet ({topic_mode})…"):
-                    topic = get_topic_detector(topic_mode, ollama_model)(clean_text)
+                with st.spinner(f"Détection du sujet ({topic_mode})… "
+                                "(le 1er appel charge le modèle, ça peut prendre un moment)"):
+                    topic = get_topic_detector(topic_mode, ollama_model)(src)
             except Exception as e:
-                st.warning(f"Détection du sujet indisponible ({topic_mode}) : {e}. "
-                           "Vérifier qu'Ollama tourne (`ollama serve`) et que le modèle est pull, "
-                           "ou choisir « mots-clés ».")
-                topic = get_topic_detector("mots-clés", ollama_model)(clean_text)
+                st.warning(f"Détection du sujet indisponible ({topic_mode}) : {e}\n\n"
+                           "Pistes : 1er appel = chargement du modèle (relancer) ; essayer un "
+                           "modèle plus petit (`qwen2.5:3b`) ; vérifier `ollama serve` ; ou "
+                           "« mots-clés ». `ollama ps` doit montrer le modèle sur GPU, pas 100% CPU.")
+                topic = get_topic_detector("mots-clés", ollama_model)(full_text)
 finally:
     os.unlink(tmp)
 
