@@ -445,6 +445,37 @@ Ce plafond n'est réparable ni par ré-étiquetage ni par plus de données d'ent
 un **jeu d'évaluation plus grand, équilibré et multi-annotateur**, ce qui suppose d'élargir le
 corpus source (aujourd'hui limité à 12 fichiers pauvres en positif).
 
+#### 8.4 ter — Étude de cas « facile ≠ bon » (jeu équilibré v4)
+Pour atteindre les effectifs du protocole sur les 12 fichiers actuels, on a construit
+`domaine_reel_v4_balanced` (450 énoncés, **neg 150 / neu 200 / pos 100**) en complétant les
+194 énoncés réels par **256 énoncés synthétiques** (voir HACA_TEST_V4_DATASHEET.md). Résultat
+**contre-intuitif** : tout le monde « réussit ».
+
+| Modèle | macro-F1 (v2 = sous-ensemble réel) | macro-F1 (v4 complet) | F1 pos (v2 → v4) |
+|---|---|---|---|
+| MARBERTv2-haca (encoder) | 0.459 | **0.796** | 0.133 → **0.770** |
+| Atlas-Chat-2B (LLM, zero-shot) | 0.493 | **0.714** | 0.322 → **0.667** |
+
+**Pourquoi le saut — et pourquoi il ne valide PAS le jeu.** Le sous-ensemble `human_gold` de v4
+**est exactement** `domaine_reel_v2` ; sur lui les scores restent ~0.46–0.49. Le saut vient
+**uniquement** des 256 énoncés synthétiques, qui sont **propres, non ambigus et prototypiques**
+(« المنتخب الوطني تأهل لكأس العالم », « أسعار الخضر طلعات »…) — **faciles pour n'importe quel
+modèle**. Le broadcast réel est l'inverse : ASR bruité, valence subtile, majorité neutre.
+
+Deux effets distincts, isolables :
+1. **Facilité** (profite à *tous*, y compris au LLM **zero-shot** qui n'a jamais vu ce
+   synthétique) — d'où le saut d'Atlas-Chat-2B (+0.34 sur pos) ;
+2. **Mémorisation de style** (bonus *en plus* pour les encoders, entraînés sur ce synthétique)
+   — l'encoder gagne **+0.64** sur pos, soit ~2× le LLM. Cet écart EST la mémorisation ; le saut
+   commun est la facilité.
+
+**Leçon :** un jeu peut être **plus grand, équilibré, et faire monter tous les scores à 0.7+**
+tout en étant un **moins bon benchmark** que les 194 exemples réels. La **taille et l'équilibre
+ne suffisent pas** ; un bon jeu doit **discriminer** et refléter la difficulté réelle. Le chiffre
+honnête reste ~0.46–0.49 (`domaine_reel_v2`). `domaine_reel_v4_balanced` est donc un **diagnostic
+par classe**, **pas** un gold — l'ingrédient manquant n'est pas le *nombre* d'exemples, mais des
+exemples **réels, difficiles, représentatifs et annotés par des humains**.
+
 ### 8.5 Recommandation révisée
 - **Déploiement** : pour une tâche de *content-valence*, privilégier un **LLM instructable avec
   la rubrique en prompt** (Atlas-Chat) si la détection du positif compte — c'est le seul à la
