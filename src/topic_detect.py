@@ -52,8 +52,28 @@ ATLAS_PROMPT = (
 )
 
 
+def load_ollama_topic(model: str = "gemma2", host: str = "http://localhost:11434"):
+    """Topic detector via a LOCAL Ollama server — fast on integrated GPUs (GGUF).
+
+    Run any 3-7B instruct model you have pulled, e.g.:  ollama pull gemma2
+    (Atlas-Chat too if you've made/pulled a GGUF of it). Needs `ollama serve` running.
+    """
+    import requests
+
+    def detect(text: str) -> str:
+        prompt = ATLAS_PROMPT.format(text=str(text)[:2000])
+        r = requests.post(f"{host}/api/generate", json={
+            "model": model, "prompt": prompt, "stream": False,
+            "options": {"num_predict": 16, "temperature": 0}}, timeout=120)
+        r.raise_for_status()
+        ans = (r.json().get("response", "") or "").strip()
+        ans = ans.splitlines()[0].strip(" .،؛:-\"'") if ans else ""
+        return ans[:40] if ans else "غير محدد"
+    return detect
+
+
 def load_atlas_topic(size: str = "2b"):
-    """Atlas-Chat topic detector. Lazy heavy imports so the keyword path needs nothing."""
+    """Atlas-Chat topic detector via transformers (4-bit, CUDA only). Lazy heavy imports."""
     import torch
     from atlas_chat import build_quantized_model, MODEL_IDS
 

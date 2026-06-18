@@ -37,9 +37,13 @@ def get_classifier(choice: str):
 
 
 @st.cache_resource(show_spinner=False)
-def get_topic_detector(mode: str):
+def get_topic_detector(mode: str, ollama_model: str = "gemma2"):
     import topic_detect as td
-    return td.load_atlas_topic("2b") if mode.startswith("Atlas") else td.load_keyword_topic()
+    if mode.startswith("Ollama"):
+        return td.load_ollama_topic(ollama_model)
+    if mode.startswith("Atlas"):
+        return td.load_atlas_topic("2b")
+    return td.load_keyword_topic()
 
 
 def proportions_bar(props):
@@ -76,8 +80,13 @@ model_choice = st.sidebar.selectbox(
     help="« stub » = démo sans modèle. Les encoders nécessitent un checkpoint entraîné.")
 topic_mode = st.sidebar.selectbox(
     "Détection du sujet",
-    ["mots-clés (rapide)", "Atlas-Chat-2B (GPU)", "aucune"],
-    help="Atlas-Chat-2B nécessite un GPU (4-bit). « mots-clés » fonctionne partout, instantané.")
+    ["mots-clés (rapide)", "Ollama (LLM local)", "Atlas-Chat-2B (CUDA)", "aucune"],
+    help="« mots-clés » = instantané, partout. « Ollama » = ton LLM local (GPU intégré, rapide). "
+         "« Atlas-Chat-2B » = transformers 4-bit (CUDA seulement).")
+ollama_model = st.sidebar.text_input(
+    "Modèle Ollama", "gemma2",
+    help="Le modèle que tu as pull (ex: gemma2, aya, qwen2.5:7b). Nécessite `ollama serve`.") \
+    if topic_mode.startswith("Ollama") else "gemma2"
 floor = st.sidebar.slider("Seuil non-neutre (sensibilité)", 0.05, 0.50, hp.NONNEU_FLOOR, 0.05,
                           help="Part minimale de négatif/positif pour basculer le verdict. "
                                "Plus bas = plus sensible.")
@@ -110,8 +119,14 @@ try:
         _, rows = hp.segment_srt(tmp)
         clean_text = " ".join(r["text"] for r in rows if r["clean"])
         if clean_text:
-            with st.spinner(f"Détection du sujet ({topic_mode})…"):
-                topic = get_topic_detector(topic_mode)(clean_text)
+            try:
+                with st.spinner(f"Détection du sujet ({topic_mode})…"):
+                    topic = get_topic_detector(topic_mode, ollama_model)(clean_text)
+            except Exception as e:
+                st.warning(f"Détection du sujet indisponible ({topic_mode}) : {e}. "
+                           "Vérifier qu'Ollama tourne (`ollama serve`) et que le modèle est pull, "
+                           "ou choisir « mots-clés ».")
+                topic = get_topic_detector("mots-clés", ollama_model)(clean_text)
 finally:
     os.unlink(tmp)
 

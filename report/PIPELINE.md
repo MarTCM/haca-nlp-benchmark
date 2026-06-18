@@ -161,10 +161,14 @@ streamlit run src/dashboard_app.py
 Choose **stub** for a no-model demo (runs anywhere), or an encoder (`marbertv2-haca`) if the
 checkpoint is present. The slider re-computes the verdict live.
 
-It also shows the **subject** of the programme (`src/topic_detect.py`): **Atlas-Chat-2B**
-(Darija LLM, needs a GPU) or a fast **keyword** taxonomy (CPU, instant) — so each verdict reads
-e.g. *"Sujet: Corruption · Verdict: NÉGATIF"*. Keyword topics on the source files: 8.srt →
-Corruption, 5.srt → Bourse, 7769 → Politique, 6.srt → Religion, 10.srt → Santé.
+It also shows the **subject** of the programme (`src/topic_detect.py`), with three backends so
+each verdict reads e.g. *"Sujet: Corruption · Verdict: NÉGATIF"*:
+- **keyword** taxonomy — CPU, instant (8.srt → Corruption, 5.srt → Bourse, 7769 → Politique…);
+- **Ollama** — your local LLM runtime (`ollama serve` + a pulled 3-7B model like `gemma2`);
+  fast on **integrated GPUs** (GGUF), recommended LLM option;
+- **Atlas-Chat-2B** — transformers 4-bit, **CUDA only** (slow/unavailable on integrated GPUs).
+
+If the LLM backend is unreachable the dashboard falls back to keywords with a warning.
 
 ## 5. Tuning the review behaviour
 Three constants at the top of `haca_pipeline.py` control how aggressive the abstention is:
