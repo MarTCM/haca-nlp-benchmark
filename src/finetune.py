@@ -93,6 +93,35 @@ MODELS = {
         "focal_gamma":       2.0,
         "pos_oversample":    3,      # repeat in-domain pos rows to amplify the rare class
     },
+    # In-domain ONLY (no MAC) — the fix for the pos-collapse: class weights and pos
+    # examples both reflect broadcast content-valence. Continues from the MAC-trained
+    # checkpoint to keep general Darija, with a low LR.
+    "marbertv2-haca-only": {
+        "hub_id":            None,
+        "local_ckpt":        "checkpoints/marbertv2-haca",  # sharpen the model you already trained
+        "train_lang":        "haca-only",
+        "eval_langs":        ["domaine_reel_v2", "darija_ar"],
+        "license_note":      "RESEARCH-ONLY — not for commercial use.",
+        "lr":                1e-5,
+        "epochs":            6,
+        "batch_size":        16,
+        "use_class_weights": True,
+        "focal_gamma":       2.0,
+        "pos_oversample":    4,
+    },
+    # Same, but fresh from Hub (use if checkpoints/marbertv2 isn't available this session).
+    "marbertv2-haca-only-hub": {
+        "hub_id":            "UBC-NLP/MARBERTv2",
+        "train_lang":        "haca-only",
+        "eval_langs":        ["domaine_reel_v2", "darija_ar"],
+        "license_note":      "RESEARCH-ONLY — not for commercial use.",
+        "lr":                2e-5,
+        "epochs":            6,
+        "batch_size":        16,
+        "use_class_weights": True,
+        "focal_gamma":       2.0,
+        "pos_oversample":    4,
+    },
     # Permissive-licence alternative for HACA production (DarijaBERT).
     "darijabert-haca": {
         "hub_id":            "SI2M-Lab/DarijaBERT",
@@ -261,6 +290,41 @@ def load_train_split_haca(pos_oversample: int = 1):
     return train_df.reset_index(drop=True), val_df.reset_index(drop=True)
 
 
+def load_train_split_haca_only(pos_oversample: int = 1):
+    """In-domain ONLY: HACA-Sent v3 broadcast data, no MAC in the training signal.
+
+    Removing MAC matters because MAC is 54% positive *emotional* tweets — mixing it in
+    (a) makes class weights treat `pos` as abundant and down-weight it, and (b) teaches the
+    wrong `pos` concept (emojis/praise) instead of broadcast content-valence (factual good
+    news).  Validation is augmented with a small MAC slice only for a stable macro-F1 signal.
+    """
+    import importlib, sys as _sys
+    _sys.path.insert(0, os.path.dirname(__file__))
+    bts = importlib.import_module("build_test_sets")
+    importlib.reload(bts)
+
+    haca = pd.read_csv(HACA_TRAIN)
+    haca = haca[haca["label"].isin(LABEL2ID)][["text", "label"]].reset_index(drop=True)
+    frozen_v2 = pd.read_csv(os.path.join(DATA_DIR, "domaine_reel_v2.csv"))
+    haca = haca[~haca["text"].isin(set(frozen_v2["text"]))].reset_index(drop=True)
+
+    hc_tr, hc_va = train_test_split(haca, test_size=0.2, stratify=haca["label"], random_state=SEED)
+    if pos_oversample and pos_oversample > 1:
+        extra = pd.concat([hc_tr[hc_tr["label"] == "pos"]] * (pos_oversample - 1), ignore_index=True)
+        hc_tr = pd.concat([hc_tr, extra], ignore_index=True)
+
+    mac_df  = bts.load_mac()
+    test_df = pd.read_csv(os.path.join(DATA_DIR, "darija_ar.csv"))
+    mac_df  = mac_df[~mac_df["text"].isin(set(test_df["text"]))].reset_index(drop=True)
+    _, mac_va = train_test_split(mac_df, test_size=0.1, stratify=mac_df["label"], random_state=SEED)
+
+    train_df = hc_tr.sample(frac=1, random_state=SEED)
+    val_df   = pd.concat([hc_va, mac_va], ignore_index=True).sample(frac=1, random_state=SEED)
+    print(f"  haca-only train: {len(train_df)} (incl. x{pos_oversample} pos)  val: {len(val_df)}")
+    print(f"  train dist: {dict(train_df['label'].value_counts())}")
+    return train_df.reset_index(drop=True), val_df.reset_index(drop=True)
+
+
 def compute_class_weights_tensor(train_df: pd.DataFrame) -> torch.Tensor:
     """Return a FloatTensor of class weights (inverse frequency, sklearn-style)."""
     labels = train_df["label"].map(LABEL2ID).values
@@ -356,6 +420,8 @@ def finetune(model_key: str) -> None:
         train_df, val_df = load_train_split_broadcast()
     elif train_lang == "haca":
         train_df, val_df = load_train_split_haca(cfg.get("pos_oversample", 1))
+    elif train_lang == "haca-only":
+        train_df, val_df = load_train_split_haca_only(cfg.get("pos_oversample", 1))
     else:
         train_df, val_df = load_train_split(train_lang)
     print(f"  train={len(train_df)}  val={len(val_df)}")

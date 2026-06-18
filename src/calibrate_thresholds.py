@@ -43,6 +43,8 @@ MODEL_REGISTRY = {
     # Stage 5 (v3) — best model saved directly to checkpoints/<key>
     "marbertv2-haca":  ("checkpoints/marbertv2-haca",  "UBC-NLP/MARBERTv2"),
     "darijabert-haca": ("checkpoints/darijabert-haca", "SI2M-Lab/DarijaBERT"),
+    "marbertv2-haca-only":     ("checkpoints/marbertv2-haca-only",     "UBC-NLP/MARBERTv2"),
+    "marbertv2-haca-only-hub": ("checkpoints/marbertv2-haca-only-hub", "UBC-NLP/MARBERTv2"),
 }
 
 # Grid: T_neg and T_pos from 0.05 to 0.60 — 12×12 = 144 combinations
