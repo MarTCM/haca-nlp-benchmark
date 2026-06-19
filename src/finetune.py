@@ -513,6 +513,8 @@ def finetune(model_key: str) -> None:
         fp16=torch.cuda.is_available(),
         eval_strategy="epoch",
         save_strategy="epoch",
+        save_total_limit=1,       # keep only the best checkpoint (avoids filling Kaggle disk)
+        save_only_model=True,     # don't persist optimizer/scheduler state (~2x model size)
         load_best_model_at_end=True,
         metric_for_best_model="macro_f1",
         greater_is_better=True,

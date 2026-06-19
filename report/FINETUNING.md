@@ -797,6 +797,14 @@ it automatically (`haca_pipeline.pick_model_for_lang("francais")` prefers the fi
 back to `xlm-sentiment`). The baseline to beat is **macro-F1 0.453**, and in particular the near-
 zero neutral recall.
 
+> **Kaggle disk note.** The Trainer saves a checkpoint every epoch, and a full checkpoint includes
+> the optimizer state (~2× the model size). Across 8 epochs and two models this overflows Kaggle's
+> ~20 GB `/kaggle/working` quota, surfacing mid-training as
+> `RuntimeError: [enforce fail at inline_container.cc] unexpected pos …` inside `torch.save`.
+> `finetune.py` therefore sets `save_total_limit=1` (keep only the best checkpoint) and
+> `save_only_model=True` (don't persist optimizer/scheduler) — final model selection is unaffected.
+> If you still hit it, free space between runs: `rm -rf checkpoints/*/checkpoint-*`.
+
 > **CamemBERT tokenizer note.** On some `transformers`/`tokenizers` versions (e.g. Kaggle's), the
 > CamemBERT *fast* tokenizer fails to load with `argument 'vocab': 'str' object cannot be converted
 > to 'PyTuple'`. Both `finetune.py` and `haca_pipeline.load_encoder` catch this and fall back to the
