@@ -813,9 +813,8 @@ ASR conversational French of the real gold. `camembert-haca` (fresh head) just l
 to `neg`. This mirrors the Arabic conclusion (FINDINGS §8): **the bottleneck is the data/eval, not
 the model.**
 
-**Decision (interim):** `xlm-sentiment` stays the French default — `pick_model_for_lang("francais")`
-returns it, and it is the ★ option in the dashboard. The fine-tunes remain selectable for comparison
-but are **not** auto-preferred.
+**Decision (interim, after attempt 1 — superseded by attempt 2 below):** `xlm-sentiment` stayed the
+French default; the attempt-1 fine-tunes were not auto-preferred because they lost to it.
 
 ### Attempt 2 — scale up + match the register (`synthetic_haca_fr_large.py`)
 
@@ -836,9 +835,30 @@ python src/finetune.py --model xlm-r-haca
 python src/eval_francais_gold.py --models xlm-sentiment camembert-haca xlm-r-haca
 ```
 The Kaggle notebook (`notebooks/kaggle_finetune_francais.ipynb`, cell 4) rebuilds the large set
-automatically. **Fill in the new gold macro-F1 here after the run.** If it still trails 0.453, the
-conclusion holds: synthetic text — even at scale and noised — can't substitute for *real* labelled
-French broadcast data (more SRTs, ideally 2 annotators).
+automatically.
+
+**Result — attempt 2 beat the baseline (on the gold):**
+
+| Model | macro-F1 | neg F1 | neu F1 (recall) | pos F1 | note |
+|---|---|---|---|---|---|
+| **xlm-r-haca** (synth-large) | **0.486** | 0.684 | **0.311 (0.23)** | 0.464 | best — beats off-the-shelf |
+| camembert-haca (synth-large) | 0.454 | 0.725 | 0.114 (0.07) | 0.523 | recovered from 0.342 (attempt 1); ties baseline |
+| xlm-sentiment (off-the-shelf) | 0.453 | 0.744 | 0.167 (0.10) | 0.448 | baseline |
+
+(`distilcamembert` failed to load on Kaggle — the known CamemBERT fast-tokenizer issue even hit the
+slow fallback there; it's the throwaway ~0.324 baseline, so it was skipped.)
+
+Scaling to ~4.5k rows **plus** the ASR-noise augmentation flipped the attempt-1 failure: `xlm-r-haca`
+now edges past the off-the-shelf model (0.486 vs 0.453), and the gain is concentrated exactly where
+we aimed — **neutral F1 nearly doubled** (0.167 → 0.311, recall 0.10 → 0.23). `camembert-haca`
+recovered from 0.342 to 0.454. **Caveat:** +0.033 macro-F1 on a 90-utterance, single-annotator gold
+is ≈ 4 neutral utterances — within the noise. The direction is principled (it matches the
+intervention), but a larger, 2-annotator gold is needed to call it decisive.
+
+**Decision (updated):** `xlm-r-haca` is now the recommended French model — `pick_model_for_lang`
+prefers it when its checkpoint is present (★ in the dashboard), with `xlm-sentiment` as the
+off-the-shelf fallback. Real labelled broadcast French at scale remains the way to make this a
+robust, not marginal, win.
 
 > **Kaggle disk note.** The Trainer saves a checkpoint every epoch, and a full checkpoint includes
 > the optimizer state (~2× the model size). Across 8 epochs and two models this overflows Kaggle's

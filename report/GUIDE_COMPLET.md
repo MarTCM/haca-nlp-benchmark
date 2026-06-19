@@ -203,12 +203,16 @@ Claude** (sans API LLM) :
 - **1re tentative** (143 phrases synthétiques propres) : **échec** — les deux fine-tunes
   (`camembert-haca`, `xlm-r-haca`) passent **sous** l'off-the-shelf (0.34 / 0.40 vs **0.453**),
   car trop peu de données et trop propres face à l'ASR bruité réel ;
-- **2e tentative** (en cours) : `synthetic_haca_fr_large.py` génère des **milliers** d'exemples
-  (templates × banques de slots, toujours sans API) + **augmentation « bruit ASR »** (accents
-  perdus, homophones, mots manquants, `[Musique]`) pour coller au registre réel.
+- **2e tentative** : `synthetic_haca_fr_large.py` génère des **milliers** d'exemples (templates ×
+  banques de slots, toujours sans API) + **augmentation « bruit ASR »** (accents perdus, homophones,
+  mots manquants, `[Musique]`) pour coller au registre réel. **Résultat : ça marche** — `xlm-r-haca`
+  passe **devant** l'off-the-shelf (0.486 vs 0.453), surtout grâce au **neutre quasi doublé**
+  (F1 0.167 → 0.311). `xlm-r-haca` devient donc le modèle français recommandé (★).
 
-Détails et résultats chiffrés : `FINETUNING.md` §6. La leçon (comme pour l'arabe) : le verrou est
-la **donnée/éval réelle**, pas le modèle ni la quantité de synthétique.
+Détails et résultats chiffrés : `FINETUNING.md` §6. **Nuance honnête** : le gain (+0.033 sur un gold
+de 90 énoncés, un seul annotateur) reste **marginal** — la direction est la bonne, mais il faudrait
+un gold plus grand (2 annotateurs) pour le confirmer. La leçon de fond (comme pour l'arabe) tient :
+le vrai verrou est la **donnée/éval réelle**.
 
 ---
 
