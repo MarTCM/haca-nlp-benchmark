@@ -205,14 +205,17 @@ Claude** (sans API LLM) :
   car trop peu de données et trop propres face à l'ASR bruité réel ;
 - **2e tentative** : `synthetic_haca_fr_large.py` génère des **milliers** d'exemples (templates ×
   banques de slots, toujours sans API) + **augmentation « bruit ASR »** (accents perdus, homophones,
-  mots manquants, `[Musique]`) pour coller au registre réel. **Résultat : ça marche** — `xlm-r-haca`
-  passe **devant** l'off-the-shelf (0.486 vs 0.453), surtout grâce au **neutre quasi doublé**
-  (F1 0.167 → 0.311). `xlm-r-haca` devient donc le modèle français recommandé (★).
+  mots manquants, `[Musique]`) pour coller au registre réel. Un premier run a semblé gagner
+  (`xlm-r-haca` 0.486), mais le ré-entraînement **méthodologiquement correct** (split de validation
+  par templates disjoints) est redescendu à **0.448** — car la validation reste *synthétique*.
 
-Détails et résultats chiffrés : `FINETUNING.md` §6. **Nuance honnête** : le gain (+0.033 sur un gold
-de 90 énoncés, un seul annotateur) reste **marginal** — la direction est la bonne, mais il faudrait
-un gold plus grand (2 annotateurs) pour le confirmer. La leçon de fond (comme pour l'arabe) tient :
-le vrai verrou est la **donnée/éval réelle**.
+**Conclusion (réglée).** Sur le gold de 90 énoncés (un seul annotateur), **toutes** les options
+françaises tiennent dans **0.43–0.49**, soit **dans le bruit** (~3 énoncés) : off-the-shelf,
+fine-tunes, ensemble — indistinguables. On ne peut pas les classer de façon fiable. Le défaut
+français est donc `xlm-sentiment` (off-the-shelf, le plus simple/reproductible, que rien ne bat de
+façon fiable) ; les fine-tunes + l'ensemble restent sélectionnables. Détails : `FINETUNING.md` §6.
+La leçon de fond (comme pour l'arabe) est confirmée : le vrai verrou est la **donnée/éval réelle**,
+pas le modèle ni la quantité de synthétique — **on ne peut pas « régler » par-dessus ce manque**.
 
 ---
 

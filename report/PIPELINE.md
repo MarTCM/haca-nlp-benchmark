@@ -169,18 +169,17 @@ streamlit run src/dashboard_app.py
 The dashboard detects the SRT language (`srt_utils.detect_lang`) and displays it
 (🇲🇦 Arabe/Darija · 🔤 Arabizi · 🇫🇷 Français). The classifier picker offers:
 - **🪄 Auto** — uses the detected language to pick the model (`arabe → marbertv2-haca`,
-  `arabizi → darijabert-arabizi`, `francais → xlm-r-haca` when its checkpoint is present, else
-  `xlm-sentiment`); the chosen model is shown;
+  `arabizi → darijabert-arabizi`, `francais → xlm-sentiment`); the chosen model is shown;
 - **stub** — no-model demo, runs anywhere;
 - **Arabe / Darija** — `marbertv2-haca` ★, `darijabert-haca`, `qarib`, `marbertv2` (fine-tuned
   3-class checkpoints; need `checkpoints/<model>/`);
 - **Arabizi** — `darijabert-arabizi`;
-- **Français** — `xlm-r-haca` ★ (HACA fine-tune on scaled + ASR-noised synthetic French; best on
-  the gold at 0.486, ~2× the off-the-shelf neutral — see `FINETUNING.md` §6), with `xlm-sentiment`
-  (`cardiffnlp/twitter-xlm-roberta-base-sentiment`, off-the-shelf 3-class) as the fallback when no
-  checkpoint is present; plus `camembert-haca` (ties baseline) and `distilcamembert` (5★ review
-  model that collapses neutral) kept for comparison. The French win over off-the-shelf is real but
-  marginal on a small gold, so French verdicts are still less reliable than the Arabic checkpoints.
+- **Français** — `xlm-sentiment` ★ (`cardiffnlp/twitter-xlm-roberta-base-sentiment`, off-the-shelf
+  3-class) is the default: on the 90-utterance gold all French configs land within noise (0.43–0.49)
+  and the synthetic fine-tunes don't reliably beat it (see `FINETUNING.md` §6), so we default to the
+  simplest reproducible option. Also selectable: the HACA fine-tunes `xlm-r-haca` / `camembert-haca`,
+  their `ensemble-fr`, and `distilcamembert` (5★ review model that collapses neutral). French
+  verdicts remain less reliable than the Arabic checkpoints until real French data exists.
 
 The slider re-computes the verdict live.
 

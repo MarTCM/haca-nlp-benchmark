@@ -881,8 +881,34 @@ Two low-effort improvements were added on top of attempt 2:
 
 **Not done — threshold calibration.** The model over-predicts `pos` (low pos precision), which
 per-class thresholds would fix, but calibrating needs a *held-out real* set (calibrating on the
-gold we report on would be leakage). Deferred until real labelled French data exists. As always,
-these gains are small on a 90-utterance single-annotator gold — directionally right, not decisive.
+gold we report on would be leakage). Deferred until real labelled French data exists.
+
+### Retraining with the disjoint split — and the settled conclusion
+
+Retrained both models with the template-disjoint split, then re-evaluated on the gold:
+
+| French config | gold macro-F1 | vs before |
+|---|---|---|
+| xlm-sentiment (off-the-shelf) | 0.453 | — |
+| xlm-r-haca (disjoint retrain) | **0.448** | ↓ from 0.486 |
+| camembert-haca (disjoint retrain) | 0.431 | ↓ from 0.454 |
+
+The *more rigorous* training made the gold score **slightly worse** — and that's the point. The
+disjoint val set is still **synthetic**; selecting the best epoch on it optimizes for the synthetic
+register, which transfers *worse* to real ASR. The earlier 0.486 was an under-trained epoch-1 model
+that, by luck, hadn't overfit the synthetic style yet. **You can't validate your way past the data
+gap when the validation set isn't real.**
+
+Decisively: every French config — off-the-shelf, both fine-tunes, the ensemble — lands in
+**0.43–0.49 on a 90-utterance, single-annotator gold**, i.e. all **within noise** (~3 utterances).
+We cannot reliably rank them. This is the same conclusion as the Arabic work (FINDINGS §8): the
+bottleneck is **real labelled data + a real, larger, multi-annotator eval set**, not the model, the
+data volume, the augmentation, or the training recipe.
+
+**Settled decision:** default French model = **`xlm-sentiment`** (off-the-shelf) — the simplest,
+most reproducible option (no shipped checkpoint, runs anywhere) that **nothing reliably beats**.
+`pick_model_for_lang("francais")` returns it; ★ in the dashboard. The fine-tunes and `ensemble-fr`
+remain selectable for comparison. We stop tuning here and revisit only with real data.
 
 > **Kaggle disk note.** The Trainer saves a checkpoint every epoch, and a full checkpoint includes
 > the optimizer state (~2× the model size). Across 8 epochs and two models this overflows Kaggle's
