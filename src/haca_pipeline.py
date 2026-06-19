@@ -128,7 +128,11 @@ def load_encoder(model_key: str):
 
     entry = _registry().get(model_key, {"src": f"checkpoints/{model_key}", "map": FINETUNED_MAP})
     src, lmap = entry["src"], entry["map"]
-    tok = AutoTokenizer.from_pretrained(src); tok.model_max_length = 512
+    try:
+        tok = AutoTokenizer.from_pretrained(src)
+    except Exception:   # CamemBERT fast tokenizer can fail on some tokenizers versions
+        tok = AutoTokenizer.from_pretrained(src, use_fast=False)
+    tok.model_max_length = 512
     pipe = pipeline("text-classification", model=src, tokenizer=tok,
                     device=0 if torch.cuda.is_available() else -1, top_k=None)
 

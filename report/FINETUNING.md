@@ -796,3 +796,11 @@ Once `checkpoints/camembert-haca/` exists, the dashboard's **Auto** mode and the
 it automatically (`haca_pipeline.pick_model_for_lang("francais")` prefers the fine-tune, falling
 back to `xlm-sentiment`). The baseline to beat is **macro-F1 0.453**, and in particular the near-
 zero neutral recall.
+
+> **CamemBERT tokenizer note.** On some `transformers`/`tokenizers` versions (e.g. Kaggle's), the
+> CamemBERT *fast* tokenizer fails to load with `argument 'vocab': 'str' object cannot be converted
+> to 'PyTuple'`. Both `finetune.py` and `haca_pipeline.load_encoder` catch this and fall back to the
+> slow SentencePiece tokenizer (needs `sentencepiece`, installed by the notebook), so training and
+> inference proceed normally. If you saw `distilcamembert — FAILED …` in the baseline cell on an
+> older checkout, that was the same cause and is harmless — the eval skips that one model and
+> continues (the `xlm-sentiment` baseline is the one that matters).

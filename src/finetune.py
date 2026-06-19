@@ -464,7 +464,10 @@ def finetune(model_key: str) -> None:
 
     # ── Load tokenizer ────────────────────────────────────────────────────────
     tok_source = local_ckpt if hub_id is None else hub_id
-    tokenizer  = AutoTokenizer.from_pretrained(tok_source)
+    try:
+        tokenizer = AutoTokenizer.from_pretrained(tok_source)
+    except Exception:   # CamemBERT fast tokenizer can fail on some tokenizers versions
+        tokenizer = AutoTokenizer.from_pretrained(tok_source, use_fast=False)
 
     # ── Load training data ────────────────────────────────────────────────────
     if train_lang == "mixed":
@@ -544,7 +547,10 @@ def finetune(model_key: str) -> None:
     from transformers import AutoTokenizer as _AutoTokenizer
     from label_maps import FINETUNED_MAP, apply_map
 
-    _tokenizer = _AutoTokenizer.from_pretrained(ckpt_path)
+    try:
+        _tokenizer = _AutoTokenizer.from_pretrained(ckpt_path)
+    except Exception:
+        _tokenizer = _AutoTokenizer.from_pretrained(ckpt_path, use_fast=False)
     _tokenizer.model_max_length = 512  # pipeline ignores max_length kwarg; patch tokenizer directly
 
     pipe = hf_pipeline(
