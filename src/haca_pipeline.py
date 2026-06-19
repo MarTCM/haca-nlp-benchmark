@@ -122,10 +122,36 @@ def pick_model_for_lang(lang: str) -> str:
     return LANG_DEFAULT_MODEL.get(lang, "marbertv2-haca")
 
 
+# Probability-averaging ensembles, by key. Each member must be a load_encoder-able key.
+ENSEMBLES = {"ensemble-fr": ["xlm-r-haca", "xlm-sentiment"]}
+
+
+def load_ensemble(keys):
+    """Average the class probabilities of several models. Robust, cheap; thresholds default 0.5."""
+    members = [load_encoder(k)[0] for k in keys]
+
+    def predict_proba(texts):
+        texts = list(texts)
+        preds = [fn(texts) for fn in members]
+        out = []
+        for i in range(len(texts)):
+            agg = {}
+            for p in preds:
+                for c, v in p[i].items():
+                    agg[c] = agg.get(c, 0.0) + v
+            out.append({c: v / len(members) for c, v in agg.items()})
+        return out
+
+    return predict_proba, {"neg": 0.5, "neu": 0.5, "pos": 0.5}
+
+
 def load_encoder(model_key: str):
     """Return predict_proba(texts) -> list[{neg,neu,pos}] for a registered model (or any
     checkpoints/<key> with a 3-class head), plus calibrated thresholds if
     results/thresholds_<model>.json exists."""
+    if model_key in ENSEMBLES:
+        return load_ensemble(ENSEMBLES[model_key])
+
     import torch
     from transformers import pipeline, AutoTokenizer
     from label_maps import FINETUNED_MAP, apply_map

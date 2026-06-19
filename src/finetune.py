@@ -362,24 +362,56 @@ def load_train_split_haca_fr():
     augmented, src/synthetic_haca_fr_large.py) when present, plus the 143 curated clean rows as
     high-quality anchors. Stratified 80/20 split; the frozen gold is excluded by text (guard).
     """
-    frames = [pd.read_csv(p) for p in (SYNTH_FR_LARGE, SYNTH_FR) if os.path.exists(p)]
-    if not frames:
+    large   = pd.read_csv(SYNTH_FR_LARGE) if os.path.exists(SYNTH_FR_LARGE) else None
+    curated = pd.read_csv(SYNTH_FR)       if os.path.exists(SYNTH_FR)       else None
+    if large is None and curated is None:
         raise FileNotFoundError(
             "No French synthetic data found. Run:\n"
             "  python src/synthetic_haca_fr_large.py   (and/or src/synthetic_haca_fr.py)")
-    df = pd.concat([f[["text", "label"]] for f in frames], ignore_index=True)
-    df = df[df["label"].isin(LABEL2ID)].drop_duplicates("text").reset_index(drop=True)
 
-    if os.path.exists(FR_GOLD):
-        gold_texts = set(pd.read_csv(FR_GOLD)["text"].astype(str))
-        df = df[~df["text"].isin(gold_texts)].reset_index(drop=True)
+    gold_texts = set(pd.read_csv(FR_GOLD)["text"].astype(str)) if os.path.exists(FR_GOLD) else set()
 
-    train_df, val_df = train_test_split(
-        df, test_size=0.2, stratify=df["label"], random_state=SEED)
-    print(f"  francais-haca train: {len(train_df)}  val: {len(val_df)}  (sources: "
-          f"{'large+curated' if len(frames) == 2 else 'single'})")
+    # ── TEMPLATE-DISJOINT validation split ──────────────────────────────────────
+    # The large set is generated from templates; a random split would put near-identical
+    # sentences (same template, different slot fills) in both train and val → val macro-F1
+    # saturates at ~1.0 and best-epoch selection is meaningless. Instead we hold out whole
+    # TEMPLATES per class for validation, so val sentences use patterns unseen in training.
+    # The 143 curated clean rows have no template id and go entirely to train (anchors).
+    val_parts, train_parts = [], []
+    if large is not None and "template_id" in large.columns:
+        rng = np.random.RandomState(SEED)
+        for lab in LABEL2ID:
+            sub = large[large["label"] == lab]
+            tids = sorted(sub["template_id"].unique())
+            rng.shuffle(tids)
+            n_val = max(1, round(0.2 * len(tids)))
+            val_tids = set(tids[:n_val])
+            val_parts.append(sub[sub["template_id"].isin(val_tids)])
+            train_parts.append(sub[~sub["template_id"].isin(val_tids)])
+        if curated is not None:
+            train_parts.append(curated)
+        train_df = pd.concat(train_parts, ignore_index=True)[["text", "label"]]
+        val_df   = pd.concat(val_parts,   ignore_index=True)[["text", "label"]]
+        split = "template-disjoint"
+    else:
+        # fallback (curated only / no template ids): plain stratified split
+        df = pd.concat([f[["text", "label"]] for f in (large, curated) if f is not None],
+                       ignore_index=True)
+        df = df[df["label"].isin(LABEL2ID)].drop_duplicates("text").reset_index(drop=True)
+        train_df, val_df = train_test_split(df, test_size=0.2, stratify=df["label"],
+                                            random_state=SEED)
+        split = "stratified-random"
+
+    # dedup + de-leak against the gold (and ensure no train text leaks into val)
+    train_df = train_df[train_df["label"].isin(LABEL2ID)].drop_duplicates("text")
+    val_df   = val_df[val_df["label"].isin(LABEL2ID)].drop_duplicates("text")
+    train_df = train_df[~train_df["text"].isin(gold_texts)]
+    val_df   = val_df[~val_df["text"].isin(gold_texts) & ~val_df["text"].isin(set(train_df["text"]))]
+    train_df, val_df = train_df.reset_index(drop=True), val_df.reset_index(drop=True)
+
+    print(f"  francais-haca train: {len(train_df)}  val: {len(val_df)}  (split: {split})")
     print(f"  train dist: {dict(train_df['label'].value_counts())}")
-    return train_df.reset_index(drop=True), val_df.reset_index(drop=True)
+    return train_df, val_df
 
 
 def compute_class_weights_tensor(train_df: pd.DataFrame) -> torch.Tensor:

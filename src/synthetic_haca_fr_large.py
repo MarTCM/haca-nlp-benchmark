@@ -215,7 +215,8 @@ def build_rows(per_class: int, noise_frac: float):
         made, attempts = 0, 0
         while made < per_class and attempts < per_class * 60:
             attempts += 1
-            text = _fill(rng.choice(templates), rng)
+            ti = rng.randrange(len(templates))            # track which template (for a disjoint val split)
+            text = _fill(templates[ti], rng)
             noised = rng.random() < noise_frac
             if noised:
                 text = asr_noise(text, rng)
@@ -232,6 +233,7 @@ def build_rows(per_class: int, noise_frac: float):
                 "text": text, "label": label,
                 "label_source": "claude-synth-template",
                 "synthetic": True, "topic": "noised" if noised else "clean",
+                "template_id": f"{label}_{ti:02d}",
             })
     rng.shuffle(rows)
     return rows
@@ -247,7 +249,7 @@ def main():
     rows = build_rows(args.per_class, args.noise_frac)
     os.makedirs(os.path.dirname(args.out), exist_ok=True)
     fields = ["utterance_id", "file", "fmt", "detected_lang", "quality", "text",
-              "label", "label_source", "synthetic", "topic"]
+              "label", "label_source", "synthetic", "topic", "template_id"]
     with open(args.out, "w", newline="", encoding="utf-8") as fh:
         w = csv.DictWriter(fh, fieldnames=fields)
         w.writeheader()

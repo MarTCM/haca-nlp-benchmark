@@ -41,6 +41,7 @@ CLASSIFIER_CHOICES = {
     "darijabert-arabizi": "Arabizi — DarijaBERT",
     "xlm-r-haca": "Français — fine-tune HACA (xlm-r-haca) ★",
     "camembert-haca": "Français — fine-tune HACA (camembert-haca)",
+    "ensemble-fr": "Français — ensemble (xlm-r-haca + xlm-sentiment)",
     "xlm-sentiment": "Français — off-the-shelf Hub (xlm-sentiment)",
     "distilcamembert": "Français — off-the-shelf Hub (distilcamembert, 5★)",
 }

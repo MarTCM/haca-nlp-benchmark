@@ -860,6 +860,30 @@ prefers it when its checkpoint is present (★ in the dashboard), with `xlm-sent
 off-the-shelf fallback. Real labelled broadcast French at scale remains the way to make this a
 robust, not marginal, win.
 
+### Cheap wins (no new data)
+
+Two low-effort improvements were added on top of attempt 2:
+
+- **Template-disjoint validation split** (`load_train_split_haca_fr`). The large set is templated,
+  so a random train/val split leaked near-identical sentences into val → val macro-F1 saturated at
+  ~1.0 and `load_best_model_at_end` just kept epoch 1 (under-trained). The loader now holds out
+  **whole templates per class** for validation (val uses patterns unseen in training, zero text
+  overlap), giving a meaningful early-stopping signal. Re-run training to benefit.
+- **Probability-averaging ensemble** `ensemble-fr` = `xlm-r-haca` + `xlm-sentiment`
+  (`haca_pipeline.load_ensemble`). On the gold: **macro-F1 0.494**, the best French config so far
+  (xlm-r-haca 0.486, xlm-sentiment 0.453). Selectable in the dashboard and `eval_francais_gold.py`.
+
+| French config | gold macro-F1 |
+|---|---|
+| **ensemble-fr** (xlm-r-haca + xlm-sentiment) | **0.494** |
+| xlm-r-haca | 0.486 |
+| xlm-sentiment (off-the-shelf) | 0.453 |
+
+**Not done — threshold calibration.** The model over-predicts `pos` (low pos precision), which
+per-class thresholds would fix, but calibrating needs a *held-out real* set (calibrating on the
+gold we report on would be leakage). Deferred until real labelled French data exists. As always,
+these gains are small on a 90-utterance single-annotator gold — directionally right, not decisive.
+
 > **Kaggle disk note.** The Trainer saves a checkpoint every epoch, and a full checkpoint includes
 > the optimizer state (~2× the model size). Across 8 epochs and two models this overflows Kaggle's
 > ~20 GB `/kaggle/working` quota, surfacing mid-training as

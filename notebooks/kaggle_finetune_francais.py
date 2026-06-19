@@ -84,13 +84,13 @@ print("xlm-r-haca done in %.1f min" % ((time.time() - t0) / 60))
 # %% 8 — EVALUATE both fine-tunes vs the baselines on the frozen gold
 import subprocess, sys
 subprocess.run([sys.executable, "src/eval_francais_gold.py", "--models",
-                "xlm-sentiment", "distilcamembert", "camembert-haca", "xlm-r-haca"], check=True)
+                "xlm-sentiment", "distilcamembert", "camembert-haca", "xlm-r-haca", "ensemble-fr"], check=True)
 
 # %% 9 — package the final model for download (Output tab -> *.zip)
 # Store (no compression): model weights are incompressible, so zip-deflate just wastes minutes.
 # Archive only the root model files, not the checkpoint-*/ resume dir.
 import os, glob, zipfile
-for key in ["camembert-haca", "xlm-r-haca"]:
+for key in ["camembert-haca", "xlm-r-haca", "ensemble-fr"]:
     src = os.path.join("checkpoints", key)
     if not os.path.isdir(src):
         print("[skip] no checkpoint for", key); continue
@@ -110,7 +110,7 @@ from IPython.display import display, FileLink
 WORK = "/kaggle/working"
 _cwd = os.getcwd()
 os.chdir(WORK)
-for key in ["camembert-haca", "xlm-r-haca"]:
+for key in ["camembert-haca", "xlm-r-haca", "ensemble-fr"]:
     zip_name = f"{key}.zip"
     if os.path.exists(zip_name):
         size_mb = os.path.getsize(zip_name) / 1024 ** 2
