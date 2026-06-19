@@ -813,10 +813,32 @@ ASR conversational French of the real gold. `camembert-haca` (fresh head) just l
 to `neg`. This mirrors the Arabic conclusion (FINDINGS §8): **the bottleneck is the data/eval, not
 the model.**
 
-**Decision:** `xlm-sentiment` stays the French default — `pick_model_for_lang("francais")` returns
-it, and it is the ★ option in the dashboard. The fine-tunes remain selectable for comparison but
-are **not** auto-preferred. To actually beat 0.453 you'd need *real* labelled French broadcast data
-at scale (more SRTs, ≥hundreds of utterances, ideally 2 annotators), not more synthetic text.
+**Decision (interim):** `xlm-sentiment` stays the French default — `pick_model_for_lang("francais")`
+returns it, and it is the ★ option in the dashboard. The fine-tunes remain selectable for comparison
+but are **not** auto-preferred.
+
+### Attempt 2 — scale up + match the register (`synthetic_haca_fr_large.py`)
+
+The attempt-1 post-mortem named two causes: too few examples **and** too clean (vs noisy ASR). So
+`src/synthetic_haca_fr_large.py` attacks both, still with **no LLM API** — it composes thousands of
+rows combinatorially from hand-authored templates × slot banks (regions, sectors, groups, numbers,
+intros), and runs an **ASR-noise augmentation** pass on ~45 % of rows (dropped accents, homophone
+slips like `à→a` / `ont→on`, missing short words, `[Musique]` tags, lost capitalisation, stutters)
+so the training text resembles real subtitles. Default output: **4 500 rows (1 500/class)**;
+`finetune.py` combines it with the 143 curated clean rows (→ ~4 643, balanced). Epochs dropped 8→4
+for the bigger set.
+
+Rebuild + retrain + re-eval:
+```bash
+python src/synthetic_haca_fr_large.py        # -> data/test_sets/synthetic_haca_fr_large.csv
+python src/finetune.py --model camembert-haca
+python src/finetune.py --model xlm-r-haca
+python src/eval_francais_gold.py --models xlm-sentiment camembert-haca xlm-r-haca
+```
+The Kaggle notebook (`notebooks/kaggle_finetune_francais.ipynb`, cell 4) rebuilds the large set
+automatically. **Fill in the new gold macro-F1 here after the run.** If it still trails 0.453, the
+conclusion holds: synthetic text — even at scale and noised — can't substitute for *real* labelled
+French broadcast data (more SRTs, ideally 2 annotators).
 
 > **Kaggle disk note.** The Trainer saves a checkpoint every epoch, and a full checkpoint includes
 > the optimizer state (~2× the model size). Across 8 epochs and two models this overflows Kaggle's

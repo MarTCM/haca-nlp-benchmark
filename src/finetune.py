@@ -131,7 +131,7 @@ MODELS = {
         "train_lang":        "francais-haca",
         "eval_langs":        [],
         "lr":                2e-5,
-        "epochs":            8,
+        "epochs":            4,          # ~4.5k rows now (was 8 for the 143-row set)
         "batch_size":        16,
         "use_class_weights": True,
         "focal_gamma":       2.0,
@@ -141,7 +141,7 @@ MODELS = {
         "train_lang":        "francais-haca",
         "eval_langs":        [],
         "lr":                2e-5,
-        "epochs":            8,
+        "epochs":            4,          # ~4.5k rows now (was 8 for the 143-row set)
         "batch_size":        16,
         "use_class_weights": True,
         "focal_gamma":       2.0,
@@ -349,23 +349,26 @@ def load_train_split_haca_only(pos_oversample: int = 1):
     return train_df.reset_index(drop=True), val_df.reset_index(drop=True)
 
 
-SYNTH_FR = os.path.join(DATA_DIR, "synthetic_haca_fr.csv")
-FR_GOLD  = os.path.join(DATA_DIR, "francais_haca_gold.csv")
+SYNTH_FR       = os.path.join(DATA_DIR, "synthetic_haca_fr.csv")        # 143 curated clean rows
+SYNTH_FR_LARGE = os.path.join(DATA_DIR, "synthetic_haca_fr_large.csv")  # thousands, templated + ASR-noised
+FR_GOLD        = os.path.join(DATA_DIR, "francais_haca_gold.csv")
 
 
 def load_train_split_haca_fr():
     """French HACA-Sent: hand-authored synthetic French broadcast utterances only.
 
-    There is no real French training pool (the only real French SRT is the frozen gold),
-    so the synthetic set IS the training data. Stratified 80/20 split. The frozen gold
-    (francais_haca_gold.csv) is excluded by text as a belt-and-braces guard against leakage.
+    There is no real French training pool (the only real French SRT is the frozen gold), so
+    the synthetic set IS the training data. Uses the LARGE generated set (templated + ASR-noise
+    augmented, src/synthetic_haca_fr_large.py) when present, plus the 143 curated clean rows as
+    high-quality anchors. Stratified 80/20 split; the frozen gold is excluded by text (guard).
     """
-    if not os.path.exists(SYNTH_FR):
+    frames = [pd.read_csv(p) for p in (SYNTH_FR_LARGE, SYNTH_FR) if os.path.exists(p)]
+    if not frames:
         raise FileNotFoundError(
-            f"French synthetic data not found: {SYNTH_FR}\n"
-            "Run:  python src/synthetic_haca_fr.py")
-    df = pd.read_csv(SYNTH_FR)
-    df = df[df["label"].isin(LABEL2ID)][["text", "label"]].reset_index(drop=True)
+            "No French synthetic data found. Run:\n"
+            "  python src/synthetic_haca_fr_large.py   (and/or src/synthetic_haca_fr.py)")
+    df = pd.concat([f[["text", "label"]] for f in frames], ignore_index=True)
+    df = df[df["label"].isin(LABEL2ID)].drop_duplicates("text").reset_index(drop=True)
 
     if os.path.exists(FR_GOLD):
         gold_texts = set(pd.read_csv(FR_GOLD)["text"].astype(str))
@@ -373,7 +376,8 @@ def load_train_split_haca_fr():
 
     train_df, val_df = train_test_split(
         df, test_size=0.2, stratify=df["label"], random_state=SEED)
-    print(f"  francais-haca train: {len(train_df)}  val: {len(val_df)}")
+    print(f"  francais-haca train: {len(train_df)}  val: {len(val_df)}  (sources: "
+          f"{'large+curated' if len(frames) == 2 else 'single'})")
     print(f"  train dist: {dict(train_df['label'].value_counts())}")
     return train_df.reset_index(drop=True), val_df.reset_index(drop=True)
 

@@ -48,13 +48,17 @@ if torch.cuda.is_available():
     print("GPU            :", torch.cuda.get_device_name(0))
     print("VRAM           : %.1f GB" % (torch.cuda.get_device_properties(0).total_memory / 1024**3))
 
-# %% 4 — verify the French datasets (committed in the repo; no download needed)
-# Training pool = src/synthetic_haca_fr.py (hand-authored). Gold = src/build_francais_gold.py
-# (hand-labelled emission_francaise.srt). Both CSVs live in data/test_sets/ and are committed.
-# NB: rebuilding the gold needs data/raw/srt/emission_francaise.srt, which is gitignored — so
-# rely on the committed CSV here; only the synthetic set can be safely rebuilt from source.
-import os, pandas as pd
-for csv in ["data/test_sets/synthetic_haca_fr.csv", "data/test_sets/francais_haca_gold.csv"]:
+# %% 4 — verify / build the French datasets
+# Training pool = src/synthetic_haca_fr_large.py (thousands of templated + ASR-noise-augmented
+# rows, deterministic) + the 143 curated clean rows. Gold = hand-labelled emission_francaise.srt.
+# The large set is safe to (re)build from source on Kaggle (no raw SRT needed); the gold CSV is
+# committed and must NOT be rebuilt here (its source SRT is gitignored).
+import os, subprocess, sys, pandas as pd
+if not os.path.exists("data/test_sets/synthetic_haca_fr_large.csv"):
+    subprocess.check_call([sys.executable, "src/synthetic_haca_fr_large.py"])
+for csv in ["data/test_sets/synthetic_haca_fr_large.csv",
+            "data/test_sets/synthetic_haca_fr.csv",
+            "data/test_sets/francais_haca_gold.csv"]:
     assert os.path.exists(csv), f"MISSING {csv} — is data/test_sets/ committed?"
     d = pd.read_csv(csv)
     print(f"{csv}: n={len(d)}  {d['label'].value_counts().to_dict()}")
