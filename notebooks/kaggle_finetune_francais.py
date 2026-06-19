@@ -97,6 +97,24 @@ for key in ["camembert-haca", "xlm-r-haca"]:
             z.write(f, arcname=os.path.join(key, os.path.basename(f)))
     print("zipped:", out, "%.0f MB" % (os.path.getsize(out) / 1e6))
 
+# %% 10 — Clickable download links for the trained models
+# FileLink needs both os.path.exists(path) (relative to CWD) and an href served from
+# /kaggle/working — so chdir there first (same trick as the Arabic notebook).
+import os
+from IPython.display import display, FileLink
+
+WORK = "/kaggle/working"
+_cwd = os.getcwd()
+os.chdir(WORK)
+for key in ["camembert-haca", "xlm-r-haca"]:
+    zip_name = f"{key}.zip"
+    if os.path.exists(zip_name):
+        size_mb = os.path.getsize(zip_name) / 1024 ** 2
+        display(FileLink(zip_name, result_html_prefix=f"<b>{key}</b> ({size_mb:.0f} MB) — "))
+    else:
+        print(f"[WARN] {zip_name} not found — run cell 9 first.")
+os.chdir(_cwd)
+
 # %% [markdown]
 # ## After training
 #
