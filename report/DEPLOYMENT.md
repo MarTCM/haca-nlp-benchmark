@@ -32,9 +32,19 @@ SRT (bruité) → segmentation → FILTRE QUALITE (exclut le garbled)
             → AGREGATION par fenêtre (segment) et sur tout le fichier (émission)
             → rapport : tonalité dominante + distribution + confiance + couverture + drapeaux
 ```
-Réutilise : `srt_utils`, `build_haca_pool` (segmentation), `asr_quality` (filtre),
-`calibrate_thresholds` (seuils). Modèle conseillé : `marbertv2-haca` (ou `darijabert-haca`,
-licence permissive) + `results/thresholds_<model>.json`.
+Réutilise : `srt_utils` (segmentation + détection de langue), `build_haca_pool` (segmentation),
+`asr_quality` (filtre **multilingue** : densité de mots-outils arabes *et* français + ratio de
+script, donc un SRT français/code-switché n'est plus rejeté à tort), `calibrate_thresholds`
+(seuils).
+
+**Modèles (registre `MODEL_REGISTRY` dans `haca_pipeline.py`)** : un modèle par langue, choisi
+automatiquement (`detect_lang`) en mode **auto** du tableau de bord —
+`arabe → marbertv2-haca` (conseillé ; ou `darijabert-haca` licence permissive, `qarib`,
+`marbertv2`), `arabizi → darijabert-arabizi`, `francais → xlm-sentiment`
+(`cardiffnlp/twitter-xlm-roberta-base-sentiment`, vrai 3 classes neg/neu/pos ; alternative
+`distilcamembert`, modèle 5★ d'avis qui écrase la classe neutre). Les modèles français sont des
+modèles du Hub mis en cache localement, **non** fine-tunés HACA → verdicts français plus faibles,
+sans seuils calibrés. Seuils calibrés via `results/thresholds_<model>.json` quand disponibles.
 
 ## 3. Utilisation
 ```bash

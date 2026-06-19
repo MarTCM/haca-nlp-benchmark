@@ -122,6 +122,30 @@ MODELS = {
         "focal_gamma":       2.0,
         "pos_oversample":    4,
     },
+    # ── French HACA-Sent — fine-tune a French encoder on hand-authored broadcast French ──
+    # Training pool: src/synthetic_haca_fr.py (no real French pool exists). Eval: the frozen
+    # real gold data/test_sets/francais_haca_gold.csv (run src/eval_francais_gold.py after).
+    # Two bases per the plan: CamemBERT (canonical French) and XLM-R (already 3-class).
+    "camembert-haca": {
+        "hub_id":            "almanach/camembert-base",
+        "train_lang":        "francais-haca",
+        "eval_langs":        [],
+        "lr":                2e-5,
+        "epochs":            8,
+        "batch_size":        16,
+        "use_class_weights": True,
+        "focal_gamma":       2.0,
+    },
+    "xlm-r-haca": {
+        "hub_id":            "cardiffnlp/twitter-xlm-roberta-base-sentiment",
+        "train_lang":        "francais-haca",
+        "eval_langs":        [],
+        "lr":                2e-5,
+        "epochs":            8,
+        "batch_size":        16,
+        "use_class_weights": True,
+        "focal_gamma":       2.0,
+    },
     # Permissive-licence alternative for HACA production (DarijaBERT).
     "darijabert-haca": {
         "hub_id":            "SI2M-Lab/DarijaBERT",
@@ -325,6 +349,35 @@ def load_train_split_haca_only(pos_oversample: int = 1):
     return train_df.reset_index(drop=True), val_df.reset_index(drop=True)
 
 
+SYNTH_FR = os.path.join(DATA_DIR, "synthetic_haca_fr.csv")
+FR_GOLD  = os.path.join(DATA_DIR, "francais_haca_gold.csv")
+
+
+def load_train_split_haca_fr():
+    """French HACA-Sent: hand-authored synthetic French broadcast utterances only.
+
+    There is no real French training pool (the only real French SRT is the frozen gold),
+    so the synthetic set IS the training data. Stratified 80/20 split. The frozen gold
+    (francais_haca_gold.csv) is excluded by text as a belt-and-braces guard against leakage.
+    """
+    if not os.path.exists(SYNTH_FR):
+        raise FileNotFoundError(
+            f"French synthetic data not found: {SYNTH_FR}\n"
+            "Run:  python src/synthetic_haca_fr.py")
+    df = pd.read_csv(SYNTH_FR)
+    df = df[df["label"].isin(LABEL2ID)][["text", "label"]].reset_index(drop=True)
+
+    if os.path.exists(FR_GOLD):
+        gold_texts = set(pd.read_csv(FR_GOLD)["text"].astype(str))
+        df = df[~df["text"].isin(gold_texts)].reset_index(drop=True)
+
+    train_df, val_df = train_test_split(
+        df, test_size=0.2, stratify=df["label"], random_state=SEED)
+    print(f"  francais-haca train: {len(train_df)}  val: {len(val_df)}")
+    print(f"  train dist: {dict(train_df['label'].value_counts())}")
+    return train_df.reset_index(drop=True), val_df.reset_index(drop=True)
+
+
 def compute_class_weights_tensor(train_df: pd.DataFrame) -> torch.Tensor:
     """Return a FloatTensor of class weights (inverse frequency, sklearn-style)."""
     labels = train_df["label"].map(LABEL2ID).values
@@ -422,6 +475,8 @@ def finetune(model_key: str) -> None:
         train_df, val_df = load_train_split_haca(cfg.get("pos_oversample", 1))
     elif train_lang == "haca-only":
         train_df, val_df = load_train_split_haca_only(cfg.get("pos_oversample", 1))
+    elif train_lang == "francais-haca":
+        train_df, val_df = load_train_split_haca_fr()
     else:
         train_df, val_df = load_train_split(train_lang)
     print(f"  train={len(train_df)}  val={len(val_df)}")

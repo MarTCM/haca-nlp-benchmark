@@ -27,6 +27,23 @@ import haca_pipeline as hp   # noqa: E402
 
 COL = {"neg": "#d9534f", "neu": "#bdbdbd", "pos": "#5cb85c"}
 LABEL_FR = {"neg": "NÉGATIF", "neu": "NEUTRE", "pos": "POSITIF"}
+LANG_FR = {"arabe": "🇲🇦 Arabe / Darija", "arabizi": "🔤 Arabizi (Darija latin)",
+           "francais": "🇫🇷 Français"}
+
+# Tonality classifier choices shown in the sidebar (key -> human label).
+CLASSIFIER_CHOICES = {
+    "auto": "🪄 Auto (langue → modèle)",
+    "stub": "stub (démo, sans modèle)",
+    "marbertv2-haca": "Arabe / Darija — MARBERTv2 (HACA) ★",
+    "darijabert-haca": "Darija — DarijaBERT (HACA)",
+    "qarib": "Arabe (MSA) — QARiB",
+    "marbertv2": "Arabe — MARBERTv2",
+    "darijabert-arabizi": "Arabizi — DarijaBERT",
+    "camembert-haca": "Français — CamemBERT (HACA) ★",
+    "xlm-r-haca": "Français — XLM-R (HACA)",
+    "xlm-sentiment": "Français — XLM-R (sentiment 3 classes)",
+    "distilcamembert": "Français — distilCamemBERT (5★ reviews)",
+}
 
 st.set_page_config(page_title="Tonalité HACA", page_icon="📺", layout="wide")
 
@@ -76,8 +93,11 @@ def timeline_fig(segments, floor):
 st.sidebar.header("Réglages")
 model_choice = st.sidebar.selectbox(
     "Classifieur (tonalité)",
-    ["stub", "marbertv2-haca", "darijabert-haca"],
-    help="« stub » = démo sans modèle. Les encoders nécessitent un checkpoint entraîné.")
+    list(CLASSIFIER_CHOICES),
+    format_func=lambda k: CLASSIFIER_CHOICES[k],
+    help="« Auto » détecte la langue du SRT et choisit le modèle. « stub » = démo sans modèle. "
+         "Les modèles arabe/darija sont des encoders fine-tunés HACA (locaux) ; le modèle "
+         "français est un modèle de sentiment du Hub (mis en cache localement).")
 topic_mode = st.sidebar.selectbox(
     "Détection du sujet",
     ["mots-clés (rapide)", "Ollama (LLM local)", "Atlas-Chat-2B (CUDA)", "aucune"],
@@ -111,14 +131,18 @@ with tempfile.NamedTemporaryFile(suffix=".srt", delete=False) as tf:
     tf.write(up.read()); tmp = tf.name
 
 topic = None
+# Detect the SRT language first — it drives the "auto" classifier and the info banner.
+_, rows = hp.segment_srt(tmp)
+clean_rows = [r["text"] for r in rows if r["clean"]]
+full_text = " ".join(clean_rows) or " ".join(r["text"] for r in rows)
+lang = hp.detect_lang(full_text) if full_text else "arabe"
+resolved_model = hp.pick_model_for_lang(lang) if model_choice == "auto" else model_choice
+
 try:
-    with st.spinner(f"Analyse de la tonalité avec « {model_choice} »…"):
-        predict_proba, thr = get_classifier(model_choice)
+    with st.spinner(f"Analyse de la tonalité avec « {CLASSIFIER_CHOICES[resolved_model]} »…"):
+        predict_proba, thr = get_classifier(resolved_model)
         rep = hp.process_file(tmp, predict_proba, thr)
     if topic_mode != "aucune":
-        _, rows = hp.segment_srt(tmp)
-        clean_rows = [r["text"] for r in rows if r["clean"]]
-        full_text = " ".join(clean_rows)
         # LLM backends: opening (intros state the subject) + a spread, short prefill.
         # Keyword: the full text (more keyword evidence = better).
         if topic_mode.startswith(("Ollama", "Atlas")) and clean_rows:
@@ -145,7 +169,10 @@ finally:
 p = rep["programme"]
 tone = p["tone"]
 
-# ── headline: subject + verdict ──────────────────────────────────────────────
+# ── headline: language + subject + verdict ───────────────────────────────────
+auto_note = (f" — modèle choisi automatiquement : `{CLASSIFIER_CHOICES[resolved_model]}`"
+             if model_choice == "auto" else "")
+st.markdown(f"### 🗣️ Langue détectée : {LANG_FR.get(lang, lang)}{auto_note}")
 if topic:
     st.markdown(f"### 🏷️ Sujet : `{topic}`")
 st.markdown(f"### Verdict émission : "

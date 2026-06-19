@@ -58,16 +58,78 @@ def lean_tone(props: dict) -> str:
 
 
 # ── classifiers (pluggable) ──────────────────────────────────────────────────
+# Tonality classifiers grouped by the SRT language they target. `src` is either a local
+# checkpoint dir or a (locally cached) Hub id; `map` turns the model's raw labels into
+# {neg,neu,pos}. The HACA models are fine-tuned 3-class encoders trained by us; the French
+# entry is a general-purpose sentiment model from the Hub (NOT fine-tuned on HACA data).
+def _registry():
+    from label_maps import FINETUNED_MAP, DISTILCAMEMBERT_MAP, XLM_T_MAP
+    return {
+        # Arabe / Darija — fine-tuned 3-class checkpoints (local)
+        "marbertv2-haca":     {"src": "checkpoints/marbertv2-haca",     "map": FINETUNED_MAP,
+                               "lang": "arabe",    "label": "Arabe / Darija — MARBERTv2 (HACA) ★"},
+        "darijabert-haca":    {"src": "checkpoints/darijabert-haca",    "map": FINETUNED_MAP,
+                               "lang": "arabe",    "label": "Darija — DarijaBERT (HACA)"},
+        "qarib":              {"src": "checkpoints/qarib",              "map": FINETUNED_MAP,
+                               "lang": "arabe",    "label": "Arabe (MSA) — QARiB"},
+        "marbertv2":          {"src": "checkpoints/marbertv2",          "map": FINETUNED_MAP,
+                               "lang": "arabe",    "label": "Arabe — MARBERTv2"},
+        # Arabizi (latin-script Darija)
+        "darijabert-arabizi": {"src": "checkpoints/darijabert-arabizi", "map": FINETUNED_MAP,
+                               "lang": "arabizi",  "label": "Arabizi — DarijaBERT"},
+        # Français — HACA fine-tunes (3-class, trained on hand-authored broadcast French via
+        # finetune.py). Available once checkpoints/<key>/ exists; preferred when present.
+        "camembert-haca":     {"src": "checkpoints/camembert-haca", "map": FINETUNED_MAP,
+                               "lang": "francais", "label": "Français — CamemBERT (HACA) ★"},
+        "xlm-r-haca":         {"src": "checkpoints/xlm-r-haca",     "map": FINETUNED_MAP,
+                               "lang": "francais", "label": "Français — XLM-R (HACA)"},
+        # Français — genuine 3-class sentiment model (neg/neu/pos), multilingual XLM-R from the
+        # Hub (cached locally). Fallback before the fine-tune exists: neutral works, unlike 5★.
+        "xlm-sentiment":      {"src": "cardiffnlp/twitter-xlm-roberta-base-sentiment", "map": XLM_T_MAP,
+                               "lang": "francais", "label": "Français — XLM-R (sentiment 3 classes)"},
+        # Français (alt) — Hub 5-star review model; strong on polarity but collapses neutral
+        # (neutral = exactly 3★), trained on reviews not broadcast. Kept for comparison.
+        "distilcamembert":    {"src": "cmarkea/distilcamembert-base-sentiment", "map": DISTILCAMEMBERT_MAP,
+                               "lang": "francais", "label": "Français — distilCamemBERT (5★ reviews)"},
+    }
+
+
+# Default tonality model per detected language (used by the dashboard "auto" mode).
+LANG_DEFAULT_MODEL = {"arabe": "marbertv2-haca", "arabizi": "darijabert-arabizi",
+                      "francais": "xlm-sentiment"}
+
+
+def models_for_lang(lang: str):
+    """Model keys appropriate for a detected language (router output)."""
+    reg = _registry()
+    return [k for k, v in reg.items() if v["lang"] == lang] or list(reg)
+
+
+def pick_model_for_lang(lang: str) -> str:
+    """Best default tonality model for a detected language.
+
+    For French, prefer an in-domain HACA fine-tune when its checkpoint is present
+    (camembert-haca > xlm-r-haca), else the off-the-shelf 3-class model.
+    """
+    if lang == "francais":
+        for key in ("camembert-haca", "xlm-r-haca"):
+            if os.path.isdir(_registry()[key]["src"]):
+                return key
+    return LANG_DEFAULT_MODEL.get(lang, "marbertv2-haca")
+
+
 def load_encoder(model_key: str):
-    """Return predict_proba(texts) -> list[{neg,neu,pos}] using a fine-tuned checkpoint,
-    plus calibrated thresholds if results/thresholds_<model>.json exists."""
+    """Return predict_proba(texts) -> list[{neg,neu,pos}] for a registered model (or any
+    checkpoints/<key> with a 3-class head), plus calibrated thresholds if
+    results/thresholds_<model>.json exists."""
     import torch
     from transformers import pipeline, AutoTokenizer
     from label_maps import FINETUNED_MAP, apply_map
 
-    ckpt = f"checkpoints/{model_key}"
-    tok = AutoTokenizer.from_pretrained(ckpt); tok.model_max_length = 512
-    pipe = pipeline("text-classification", model=ckpt, tokenizer=tok,
+    entry = _registry().get(model_key, {"src": f"checkpoints/{model_key}", "map": FINETUNED_MAP})
+    src, lmap = entry["src"], entry["map"]
+    tok = AutoTokenizer.from_pretrained(src); tok.model_max_length = 512
+    pipe = pipeline("text-classification", model=src, tokenizer=tok,
                     device=0 if torch.cuda.is_available() else -1, top_k=None)
 
     thr = {"neg": 0.5, "neu": 0.5, "pos": 0.5}
@@ -80,7 +142,12 @@ def load_encoder(model_key: str):
         out = []
         for item in raw:
             scores = item if isinstance(item, list) else [item]
-            out.append({apply_map(s["label"], FINETUNED_MAP): s["score"] for s in scores})
+            # several raw labels can map to the same class (e.g. 1+2 stars -> neg): sum them
+            d = {}
+            for s in scores:
+                c = apply_map(s["label"], lmap)
+                d[c] = d.get(c, 0.0) + s["score"]
+            out.append(d)
         return out
 
     return predict_proba, thr

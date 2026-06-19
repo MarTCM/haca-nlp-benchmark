@@ -748,3 +748,51 @@ The non-response rate is 0.0% for the 9B: it always outputs one of the three val
 | VRAM (T4) | 2.2–3.0 GB | ~4 GB (4-bit) | ~10 GB (4-bit) |
 
 **Key insight:** The right LLM size depends on the task. Use 2B for binary arabizi; use 9B for 3-class Darija. In both cases, the fine-tuned encoder is still recommended for production — it is more accurate and 45–180× faster. The LLM sizes are useful as zero-shot baselines and for deployment contexts where no GPU is available for fine-tuned inference.
+
+---
+
+## Step 6 — French HACA fine-tune (`camembert-haca`, `xlm-r-haca`)
+
+The Arabic/Darija pipeline had fine-tuned in-domain encoders, but **French** ran on an
+off-the-shelf Hub model. On the French gold (`data/test_sets/francais_haca_gold.csv`, 90 real
+broadcast utterances), the off-the-shelf models are weak — especially on the **neutral** class,
+which is the bulk of factual broadcast speech:
+
+| Model | macro-F1 | neutral F1 (recall) | note |
+|---|---|---|---|
+| `distilcamembert` (5★ reviews) | 0.324 | **0.000** (0.00) | never predicts neutral — 3★ is too rare |
+| `xlm-sentiment` (Twitter 3-class) | 0.453 | 0.167 (0.10) | tweet-trained, under-produces neutral |
+
+So we fine-tune a French encoder on HACA-style broadcast French, exactly like the Arabic models.
+
+**The dataset (self-annotated, no LLM API).** There is no real French training pool (the only
+real French SRT is the frozen gold), so the training data is **hand-authored** by Claude in
+`src/synthetic_haca_fr.py` — 143 broadcast-register French utterances (63 pos / 40 neg / 40 neu)
+across HACA topics (économie, santé, fiscalité, corruption, Sahara, éducation, sport…), following
+the same content-valence rubric as the Arabic v3 set. Unlike the Arabic flow there is no MAC pool
+to mix in, so the classes are kept roughly balanced (not neu-heavy) so a fresh head learns all
+three. The gold is hand-labelled real data (`src/build_francais_gold.py`), kept strictly out of
+training.
+
+**The two bases.** Per the plan we try both:
+- `camembert-haca` — `almanach/camembert-base`, the canonical French encoder (fresh 3-class head);
+- `xlm-r-haca` — `cardiffnlp/twitter-xlm-roberta-base-sentiment`, already 3-class, adapted from
+  tweets to broadcast.
+
+Both use class-weighted focal loss (`focal_gamma=2.0`), 8 epochs (the set is small), lr 2e-5.
+
+**Run it — easiest is the dedicated Kaggle notebook** `notebooks/kaggle_finetune_francais.ipynb`
+(GPU T4, Internet ON): it clones the repo, trains both models, and prints the baseline-vs-fine-tune
+comparison on the gold. Or from a shell on any GPU box:
+```bash
+python src/synthetic_haca_fr.py        # build the training CSV (already committed)
+python src/build_francais_gold.py      # build the gold CSV (already committed)
+python src/finetune.py --model camembert-haca     # ~5 min on T4 → checkpoints/camembert-haca/
+python src/finetune.py --model xlm-r-haca         # ~6 min on T4 → checkpoints/xlm-r-haca/
+# measure the gain on the real gold:
+python src/eval_francais_gold.py --models xlm-sentiment camembert-haca xlm-r-haca
+```
+Once `checkpoints/camembert-haca/` exists, the dashboard's **Auto** mode and the French picker use
+it automatically (`haca_pipeline.pick_model_for_lang("francais")` prefers the fine-tune, falling
+back to `xlm-sentiment`). The baseline to beat is **macro-F1 0.453**, and in particular the near-
+zero neutral recall.

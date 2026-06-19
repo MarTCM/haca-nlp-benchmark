@@ -40,13 +40,21 @@ It is *not* a per-utterance classifier — it aggregates, and it abstains on noi
    paragraphs are window-split, short SRT cues are merged into ~sentence-length utterances.
    Utterances shorter than 40 chars are dropped.
 2. **Quality gate** (`asr_quality.is_clean`). Scores each utterance on function-word density,
-   length, script and repetition. Garbled fragments are marked `garbled` and **kept out of the
-   score** — they still count toward `n_total` (so they lower `coverage`), but they never receive
-   a tone. This is the abstention that keeps precision high.
-3. **Classify.** Loads `checkpoints/<model>/` as a HuggingFace text-classification pipeline and,
-   if present, the calibrated thresholds from `results/thresholds_<model>.json`. Each clean
-   utterance gets a label via **shifted argmax** (`score[c] − threshold[c]`) and a confidence
-   (`max softmax`).
+   length, script and repetition. The gate is **language-agnostic**: `func_ratio` counts both
+   Arabic *and* French high-frequency function words, and `script_ratio` (Arabic + Latin letters
+   vs digit/symbol noise) replaces the old Arabic-only check — so a clean French or code-switched
+   utterance passes, while garbled fragments in any language are dropped. For pure Arabic-script
+   input the behaviour is identical to the original Arabic-only gate. Garbled fragments are marked
+   `garbled` and **kept out of the score** — they still count toward `n_total` (so they lower
+   `coverage`), but they never receive a tone. This is the abstention that keeps precision high.
+3. **Classify.** Loads the chosen model as a HuggingFace text-classification pipeline and, if
+   present, the calibrated thresholds from `results/thresholds_<model>.json`. The model is
+   resolved through a small **registry** in `haca_pipeline.py` (`MODEL_REGISTRY`) that maps a
+   model key to its source (a local `checkpoints/<model>/` dir **or** a cached Hub id) and a
+   label map. This is what lets the same pipeline serve Arabic/Darija (fine-tuned encoders) and
+   French (`cmarkea/distilcamembert-base-sentiment`, a Hub sentiment model whose 5-star head is
+   mapped to neg/neu/pos). Each clean utterance gets a label via **shifted argmax**
+   (`score[c] − threshold[c]`) and a confidence (`max softmax`).
 4. **Aggregate.** A segment = `WINDOW` (default 12) consecutive utterances. For each segment and
    for the whole programme, it counts the clean-utterance labels → distribution, averages the
    confidences, computes coverage = `n_clean / n_total`, and derives the **headline tone**
@@ -151,15 +159,27 @@ Options: `--srt` (one file) or `--srt-dir` (a folder); `--model` (checkpoint nam
 ---
 
 ## 4b. Web dashboard (upload an SRT in a browser)
-A simple UI wraps the pipeline: upload a `.srt`, see the verdict, the neg/neu/pos percentages,
-the per-segment timeline, a segment table, and a CSV download — with a **sensitivity slider**
-(the non-neutral floor) and a classifier picker.
+A simple UI wraps the pipeline: upload a `.srt`, see the **detected language**, the verdict, the
+neg/neu/pos percentages, the per-segment timeline, a segment table, and a CSV download — with a
+**sensitivity slider** (the non-neutral floor) and a classifier picker.
 ```bash
 pip install streamlit
 streamlit run src/dashboard_app.py
 ```
-Choose **stub** for a no-model demo (runs anywhere), or an encoder (`marbertv2-haca`) if the
-checkpoint is present. The slider re-computes the verdict live.
+The dashboard detects the SRT language (`srt_utils.detect_lang`) and displays it
+(🇲🇦 Arabe/Darija · 🔤 Arabizi · 🇫🇷 Français). The classifier picker offers:
+- **🪄 Auto** — uses the detected language to pick the model (`arabe → marbertv2-haca`,
+  `arabizi → darijabert-arabizi`, `francais → xlm-sentiment`); the chosen model is shown;
+- **stub** — no-model demo, runs anywhere;
+- **Arabe / Darija** — `marbertv2-haca` ★, `darijabert-haca`, `qarib`, `marbertv2` (fine-tuned
+  3-class checkpoints; need `checkpoints/<model>/`);
+- **Arabizi** — `darijabert-arabizi`;
+- **Français** — `xlm-sentiment` ★ (`cardiffnlp/twitter-xlm-roberta-base-sentiment`, a genuine
+  3-class neg/neu/pos model, cached locally) or `distilcamembert` (a 5★ *review* model that
+  collapses neutral — kept for comparison). Both are Hub models, *not* HACA-fine-tuned, so French
+  verdicts are weaker/uncalibrated than the Arabic checkpoints.
+
+The slider re-computes the verdict live.
 
 It also shows the **subject** of the programme (`src/topic_detect.py`), with three backends so
 each verdict reads e.g. *"Sujet: Corruption · Verdict: NÉGATIF"*:
