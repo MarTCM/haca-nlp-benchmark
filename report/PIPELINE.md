@@ -175,9 +175,11 @@ The dashboard detects the SRT language (`srt_utils.detect_lang`) and displays it
   3-class checkpoints; need `checkpoints/<model>/`);
 - **Arabizi** — `darijabert-arabizi`;
 - **Français** — `xlm-sentiment` ★ (`cardiffnlp/twitter-xlm-roberta-base-sentiment`, a genuine
-  3-class neg/neu/pos model, cached locally) or `distilcamembert` (a 5★ *review* model that
-  collapses neutral — kept for comparison). Both are Hub models, *not* HACA-fine-tuned, so French
-  verdicts are weaker/uncalibrated than the Arabic checkpoints.
+  3-class neg/neu/pos Hub model, the recommended default) or `distilcamembert` (a 5★ *review*
+  model that collapses neutral — kept for comparison); plus the HACA fine-tunes `camembert-haca`
+  / `xlm-r-haca` (labelled "synth"), which on the real gold **under-performed** the off-the-shelf
+  model — selectable but *not* recommended (see `FINETUNING.md` §6). No French model is yet a
+  reliable in-domain fine-tune, so French verdicts are weaker than the Arabic checkpoints.
 
 The slider re-computes the verdict live.
 

@@ -387,6 +387,8 @@ After language detection, each utterance is routed to the best-performing model 
 
 This is the **max-precision routing** strategy from the plan: assign each utterance to the model that achieves the highest F1 on its language, regardless of other costs (memory, latency, model count). The alternative strategies — min-cost (one model for everything) and balanced (trade F1 for simplicity) — are discussed in the final report.
 
+> **Benchmark vs deployment.** The table above is the *benchmark* result on the public test sets (e.g. distilcamembert's 0.949 is on Allociné, binary neg/pos). The **deployable tonality pipeline** (`haca_pipeline.py` / the dashboard) needs **3-class** neg/neu/pos and a neutral that actually fires on factual broadcast, so it routes `francais → xlm-sentiment` (`cardiffnlp/twitter-xlm-roberta-base-sentiment`), not distilcamembert (which collapses neutral). See `PIPELINE.md` §4b and `FINETUNING.md` §6 for the per-language model registry and the French model choice.
+
 **What this means in practice:** A production deployment using max-precision routing would need to keep all four models loaded simultaneously (or load/unload on demand). Memory requirement: MARBERTv2 (~630MB) + camelbert-da (~420MB) + DarijaBERT-arabizi (~660MB) + distilcamembert (~260MB) ≈ **2 GB total** for the model weights (in fp32; roughly halved in fp16). This is manageable on any machine with a GPU.
 
 ---

@@ -177,6 +177,39 @@ Sorties : une **timeline** par émission, un **JSON** détaillé, et un **CSV ta
 corruption sort **négatif**, les fichiers très bruités sortent avec **couverture basse +
 drapeau** (bon comportement : on ne devine pas sur du bruit).
 
+### Extension multilingue + tableau de bord
+
+Le système a été étendu pour traiter **trois langues** de SRT, pas seulement le darija en
+caractères arabes :
+
+- **Filtre qualité multilingue** (`asr_quality.is_clean`) : il compte désormais les mots-outils
+  **arabes ET français** et mesure un ratio de « vrai texte » (script arabe + latin) au lieu d'un
+  ratio purement arabe. Un SRT français ou code-switché n'est donc plus rejeté à tort
+  (`no_intelligible_content`). Comportement **inchangé** pour un SRT 100 % arabe.
+- **Registre de modèles par langue** (`haca_pipeline.MODEL_REGISTRY`) : un modèle de tonalité par
+  langue (checkpoint local **ou** modèle du Hub mis en cache). `pick_model_for_lang` choisit
+  automatiquement : `arabe → marbertv2-haca`, `arabizi → darijabert-arabizi`,
+  `francais → xlm-sentiment`.
+- **Tableau de bord** (`src/dashboard_app.py`, Streamlit) : on charge un SRT, il **détecte la
+  langue**, choisit le modèle (mode « Auto ») ou laisse l'utilisateur choisir, et affiche verdict
+  + timeline + CSV. Détaillé dans `PIPELINE.md` §4b.
+
+**Le français — et la tentative de fine-tune.** Faute de modèle français entraîné sur du broadcast
+HACA, le défaut est `cardiffnlp/twitter-xlm-roberta-base-sentiment` (vrai 3 classes neg/neu/pos).
+On a tenté de faire mieux en affinant un encoder français sur des données **auto-annotées par
+Claude** (sans API LLM) :
+- jeu d'éval « gold » = 90 énoncés réels de `emission_francaise.srt`, étiquetés à la main
+  (`build_francais_gold.py`) — gelé, jamais entraîné ;
+- **1re tentative** (143 phrases synthétiques propres) : **échec** — les deux fine-tunes
+  (`camembert-haca`, `xlm-r-haca`) passent **sous** l'off-the-shelf (0.34 / 0.40 vs **0.453**),
+  car trop peu de données et trop propres face à l'ASR bruité réel ;
+- **2e tentative** (en cours) : `synthetic_haca_fr_large.py` génère des **milliers** d'exemples
+  (templates × banques de slots, toujours sans API) + **augmentation « bruit ASR »** (accents
+  perdus, homophones, mots manquants, `[Musique]`) pour coller au registre réel.
+
+Détails et résultats chiffrés : `FINETUNING.md` §6. La leçon (comme pour l'arabe) : le verrou est
+la **donnée/éval réelle**, pas le modèle ni la quantité de synthétique.
+
 ---
 
 ## 6. Carte des fichiers (où est quoi)
@@ -193,12 +226,17 @@ drapeau** (bon comportement : on ne devine pas sur du bruit).
 | `src/eval_llm_rubric.py` | LLM darija avec la rubrique en prompt |
 | `src/apply_annotations_domaine_reel_v3.py` | Ré-annotation + kappa (étude de cohérence) |
 | `src/build_domaine_reel_v4.py`, `src/synthetic_haca_test.py` | Jeu équilibré v4 (diagnostic) |
-| **`src/haca_pipeline.py`** | **Le système déployable (tonalité par segment)** |
+| **`src/haca_pipeline.py`** | **Le système déployable (tonalité par segment, multilingue)** |
+| **`src/dashboard_app.py`** | **Tableau de bord web (Streamlit) : upload SRT → langue + verdict** |
+| `src/synthetic_haca_fr.py`, `src/synthetic_haca_fr_large.py` | Données FR synthétiques (auto-annotées ; + bruit ASR) |
+| `src/build_francais_gold.py` → `data/test_sets/francais_haca_gold.csv` | Gold FR réel (90 énoncés, à la main) |
+| `src/eval_francais_gold.py` | Éval FR sur le gold |
 | `report/FINDINGS.md` (§8) | Tous les résultats + l'analyse |
-| `report/DEPLOYMENT.md` | La solution déployable expliquée |
+| `report/DEPLOYMENT.md`, `report/PIPELINE.md` | La solution déployable + le tableau de bord |
+| `report/FINETUNING.md` (§6) | Fine-tune français (tentatives + résultats) |
 | `report/TEST_SET_PROTOCOL.md` | Comment construire un bon jeu de test |
 | `report/HACA_DATASET.md`, `HACA_TEST_V4_DATASHEET.md` | Fiches de provenance des données |
-| `notebooks/kaggle_haca_full.ipynb` | Notebook pour tout reproduire sur Kaggle |
+| `notebooks/kaggle_haca_full.ipynb`, `kaggle_finetune_francais.ipynb` | Notebooks Kaggle (arabe ; fine-tune FR) |
 
 ---
 
