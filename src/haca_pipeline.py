@@ -79,14 +79,16 @@ def _registry():
                                "lang": "arabizi",  "label": "Arabizi — DarijaBERT"},
         # Français — HACA fine-tunes (3-class, trained on hand-authored broadcast French via
         # finetune.py). Available once checkpoints/<key>/ exists; preferred when present.
+        # NOTE: on the real gold these underperformed off-the-shelf xlm-sentiment (0.34/0.40 vs
+        # 0.45) — kept selectable for comparison, but xlm-sentiment is the recommended default.
         "camembert-haca":     {"src": "checkpoints/camembert-haca", "map": FINETUNED_MAP,
-                               "lang": "francais", "label": "Français — CamemBERT (HACA) ★"},
+                               "lang": "francais", "label": "Français — CamemBERT (HACA, synth)"},
         "xlm-r-haca":         {"src": "checkpoints/xlm-r-haca",     "map": FINETUNED_MAP,
-                               "lang": "francais", "label": "Français — XLM-R (HACA)"},
+                               "lang": "francais", "label": "Français — XLM-R (HACA, synth)"},
         # Français — genuine 3-class sentiment model (neg/neu/pos), multilingual XLM-R from the
-        # Hub (cached locally). Fallback before the fine-tune exists: neutral works, unlike 5★.
+        # Hub (cached locally). Best French model on the gold → recommended default.
         "xlm-sentiment":      {"src": "cardiffnlp/twitter-xlm-roberta-base-sentiment", "map": XLM_T_MAP,
-                               "lang": "francais", "label": "Français — XLM-R (sentiment 3 classes)"},
+                               "lang": "francais", "label": "Français — XLM-R (sentiment 3 classes) ★"},
         # Français (alt) — Hub 5-star review model; strong on polarity but collapses neutral
         # (neutral = exactly 3★), trained on reviews not broadcast. Kept for comparison.
         "distilcamembert":    {"src": "cmarkea/distilcamembert-base-sentiment", "map": DISTILCAMEMBERT_MAP,
@@ -108,13 +110,11 @@ def models_for_lang(lang: str):
 def pick_model_for_lang(lang: str) -> str:
     """Best default tonality model for a detected language.
 
-    For French, prefer an in-domain HACA fine-tune when its checkpoint is present
-    (camembert-haca > xlm-r-haca), else the off-the-shelf 3-class model.
+    French note: the HACA fine-tunes (camembert-haca / xlm-r-haca) trained on 143 synthetic
+    rows scored BELOW the off-the-shelf xlm-sentiment on the real gold (0.34/0.40 vs 0.45 —
+    see report/FINETUNING.md §6), so we default to xlm-sentiment. The fine-tunes stay
+    selectable in the dashboard for comparison, but are not auto-preferred.
     """
-    if lang == "francais":
-        for key in ("camembert-haca", "xlm-r-haca"):
-            if os.path.isdir(_registry()[key]["src"]):
-                return key
     return LANG_DEFAULT_MODEL.get(lang, "marbertv2-haca")
 
 

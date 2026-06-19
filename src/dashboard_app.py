@@ -39,9 +39,9 @@ CLASSIFIER_CHOICES = {
     "qarib": "Arabe (MSA) — QARiB",
     "marbertv2": "Arabe — MARBERTv2",
     "darijabert-arabizi": "Arabizi — DarijaBERT",
-    "camembert-haca": "Français — CamemBERT (HACA) ★",
-    "xlm-r-haca": "Français — XLM-R (HACA)",
-    "xlm-sentiment": "Français — XLM-R (sentiment 3 classes)",
+    "camembert-haca": "Français — CamemBERT (HACA, synth)",
+    "xlm-r-haca": "Français — XLM-R (HACA, synth)",
+    "xlm-sentiment": "Français — XLM-R (sentiment 3 classes) ★",
     "distilcamembert": "Français — distilCamemBERT (5★ reviews)",
 }
 

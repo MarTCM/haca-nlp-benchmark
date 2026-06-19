@@ -792,10 +792,31 @@ python src/finetune.py --model xlm-r-haca         # ~6 min on T4 → checkpoints
 # measure the gain on the real gold:
 python src/eval_francais_gold.py --models xlm-sentiment camembert-haca xlm-r-haca
 ```
-Once `checkpoints/camembert-haca/` exists, the dashboard's **Auto** mode and the French picker use
-it automatically (`haca_pipeline.pick_model_for_lang("francais")` prefers the fine-tune, falling
-back to `xlm-sentiment`). The baseline to beat is **macro-F1 0.453**, and in particular the near-
-zero neutral recall.
+The baseline to beat was **macro-F1 0.453** (`xlm-sentiment`), in particular its near-zero neutral
+recall.
+
+### Result — the fine-tune did NOT beat off-the-shelf (honest negative result)
+
+Trained on Kaggle, evaluated on the 90-utterance gold (`src/eval_francais_gold.py`):
+
+| Model | macro-F1 | neg F1 | neu F1 | pos F1 | note |
+|---|---|---|---|---|---|
+| **xlm-sentiment** (off-the-shelf) | **0.453** | 0.744 | 0.167 | 0.448 | best |
+| xlm-r-haca (fine-tuned, synth) | 0.398 | 0.603 | 0.186 | 0.406 | fine-tuning *degraded* its own base (0.453→0.398) |
+| camembert-haca (fine-tuned, synth) | 0.342 | 0.655 | 0.267 | 0.105 | collapses to neg (neg recall 0.90, pos recall 0.06) |
+| distilcamembert | 0.324 | 0.535 | 0.000 | 0.436 | never predicts neutral |
+
+**Both fine-tunes scored below the off-the-shelf model.** 143 hand-authored sentences are too few
+and too stylistically narrow (clean, formal broadcast prose) to improve a model already trained on
+large sentiment corpora — the model overfits the synthetic register, which doesn't match the noisy
+ASR conversational French of the real gold. `camembert-haca` (fresh head) just learned to default
+to `neg`. This mirrors the Arabic conclusion (FINDINGS §8): **the bottleneck is the data/eval, not
+the model.**
+
+**Decision:** `xlm-sentiment` stays the French default — `pick_model_for_lang("francais")` returns
+it, and it is the ★ option in the dashboard. The fine-tunes remain selectable for comparison but
+are **not** auto-preferred. To actually beat 0.453 you'd need *real* labelled French broadcast data
+at scale (more SRTs, ≥hundreds of utterances, ideally 2 annotators), not more synthetic text.
 
 > **Kaggle disk note.** The Trainer saves a checkpoint every epoch, and a full checkpoint includes
 > the optimizer state (~2× the model size). Across 8 epochs and two models this overflows Kaggle's
