@@ -82,16 +82,20 @@ import subprocess, sys
 subprocess.run([sys.executable, "src/eval_francais_gold.py", "--models",
                 "xlm-sentiment", "distilcamembert", "camembert-haca", "xlm-r-haca"], check=True)
 
-# %% 9 — package the checkpoints for download (Output tab -> *.zip)
-import shutil, os
+# %% 9 — package the final model for download (Output tab -> *.zip)
+# Store (no compression): model weights are incompressible, so zip-deflate just wastes minutes.
+# Archive only the root model files, not the checkpoint-*/ resume dir.
+import os, glob, zipfile
 for key in ["camembert-haca", "xlm-r-haca"]:
     src = os.path.join("checkpoints", key)
-    if os.path.isdir(src):
-        out = f"/kaggle/working/{key}"
-        shutil.make_archive(out, "zip", src)
-        print("zipped:", out + ".zip")
-    else:
-        print("[skip] no checkpoint for", key)
+    if not os.path.isdir(src):
+        print("[skip] no checkpoint for", key); continue
+    out = f"/kaggle/working/{key}.zip"
+    files = [f for f in glob.glob(os.path.join(src, "*")) if os.path.isfile(f)]
+    with zipfile.ZipFile(out, "w", zipfile.ZIP_STORED) as z:
+        for f in files:
+            z.write(f, arcname=os.path.join(key, os.path.basename(f)))
+    print("zipped:", out, "%.0f MB" % (os.path.getsize(out) / 1e6))
 
 # %% [markdown]
 # ## After training
