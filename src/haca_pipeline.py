@@ -83,13 +83,13 @@ def _registry():
         # past off-the-shelf (0.486 vs 0.453, ~2x neutral) → recommended default; camembert-haca
         # only ties the baseline (kept selectable).
         "xlm-r-haca":         {"src": "checkpoints/xlm-r-haca",     "map": FINETUNED_MAP,
-                               "lang": "francais", "label": "Français — XLM-R (HACA) ★"},
+                               "lang": "francais", "label": "Français — fine-tune HACA (xlm-r-haca) ★"},
         "camembert-haca":     {"src": "checkpoints/camembert-haca", "map": FINETUNED_MAP,
-                               "lang": "francais", "label": "Français — CamemBERT (HACA, synth)"},
+                               "lang": "francais", "label": "Français — fine-tune HACA (camembert-haca)"},
         # Français — off-the-shelf 3-class sentiment model (neg/neu/pos), multilingual XLM-R from
         # the Hub (cached locally). Fallback when no fine-tune checkpoint is present.
         "xlm-sentiment":      {"src": "cardiffnlp/twitter-xlm-roberta-base-sentiment", "map": XLM_T_MAP,
-                               "lang": "francais", "label": "Français — XLM-R (sentiment, off-the-shelf)"},
+                               "lang": "francais", "label": "Français — off-the-shelf Hub (xlm-sentiment)"},
         # Français (alt) — Hub 5-star review model; strong on polarity but collapses neutral
         # (neutral = exactly 3★), trained on reviews not broadcast. Kept for comparison.
         "distilcamembert":    {"src": "cmarkea/distilcamembert-base-sentiment", "map": DISTILCAMEMBERT_MAP,

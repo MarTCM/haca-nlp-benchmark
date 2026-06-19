@@ -39,10 +39,10 @@ CLASSIFIER_CHOICES = {
     "qarib": "Arabe (MSA) — QARiB",
     "marbertv2": "Arabe — MARBERTv2",
     "darijabert-arabizi": "Arabizi — DarijaBERT",
-    "xlm-r-haca": "Français — XLM-R (HACA) ★",
-    "camembert-haca": "Français — CamemBERT (HACA, synth)",
-    "xlm-sentiment": "Français — XLM-R (sentiment, off-the-shelf)",
-    "distilcamembert": "Français — distilCamemBERT (5★ reviews)",
+    "xlm-r-haca": "Français — fine-tune HACA (xlm-r-haca) ★",
+    "camembert-haca": "Français — fine-tune HACA (camembert-haca)",
+    "xlm-sentiment": "Français — off-the-shelf Hub (xlm-sentiment)",
+    "distilcamembert": "Français — off-the-shelf Hub (distilcamembert, 5★)",
 }
 
 st.set_page_config(page_title="Tonalité HACA", page_icon="📺", layout="wide")
@@ -170,9 +170,10 @@ p = rep["programme"]
 tone = p["tone"]
 
 # ── headline: language + subject + verdict ───────────────────────────────────
-auto_note = (f" — modèle choisi automatiquement : `{CLASSIFIER_CHOICES[resolved_model]}`"
-             if model_choice == "auto" else "")
-st.markdown(f"### 🗣️ Langue détectée : {LANG_FR.get(lang, lang)}{auto_note}")
+# Always show which model produced the verdict (avoids confusing auto vs manual picks).
+model_note = f" · modèle : `{CLASSIFIER_CHOICES.get(resolved_model, resolved_model)}`" + (
+    " (auto)" if model_choice == "auto" else "")
+st.markdown(f"### 🗣️ Langue détectée : {LANG_FR.get(lang, lang)}{model_note}")
 if topic:
     st.markdown(f"### 🏷️ Sujet : `{topic}`")
 st.markdown(f"### Verdict émission : "
