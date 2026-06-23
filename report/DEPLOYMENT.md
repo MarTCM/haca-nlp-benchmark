@@ -3,7 +3,7 @@
 **Outil :** `src/haca_pipeline.py` — auto-hébergé, niveau **segment/émission**, robuste à l'ASR
 bruité. Ce n'est **pas** un classifieur par énoncé : c'est un système de **tonalité** exploitable.
 
-**Contraintes prises en compte :** on-premise (pas d'API externe), sortie au niveau
+**Contraintes prises en compte :** on-premise (ou via API Cloud optionnelle), sortie au niveau
 segment/émission, fichiers SRT fournis tels quels (ASR bruité non contrôlé).
 
 ---
@@ -28,7 +28,8 @@ Résultat : un système **fiable** (haute précision sur les segments confiants)
 ## 2. Architecture
 ```
 SRT (bruité) → segmentation → FILTRE QUALITE (exclut le garbled)
-            → encoder fine-tuné + seuils calibrés (par énoncé propre)
+            → soit encoder fine-tuné + seuils calibrés (par énoncé propre)
+            → soit API Cloud (LLM via Chat Completions, batch unique)
             → AGREGATION par fenêtre (segment) et sur tout le fichier (émission)
             → rapport : tonalité dominante + distribution + confiance + couverture + drapeaux
 ```
@@ -46,8 +47,17 @@ automatiquement (`detect_lang`) en mode **auto** du tableau de bord —
 modèles du Hub mis en cache localement, **non** fine-tunés HACA → verdicts français plus faibles,
 sans seuils calibrés. Seuils calibrés via `results/thresholds_<model>.json` quand disponibles.
 
+**Alternative API Cloud** : un LLM via endpoint compatible OpenAI Chat Completions (Z.ai, OpenRouter,
+OpenAI, Groq…) peut remplacer les encodeurs par langue. Par défaut : `glm-5.2` sur
+`https://api.z.ai/api/paas/v4/chat/completions`. Les énoncés sont envoyés en un seul batch
+(économie de tokens) ; la détection du sujet peut être combinée au même appel pour économiser
+davantage. Un bouton manuel **« Lancer l'analyse »** évite les appels accidentels.
+
 ## 3. Utilisation
 ```bash
+# tableau de bord web (Streamlit)
+streamlit run src/dashboard_app.py
+
 # réel (machine avec le checkpoint + GPU)
 python src/haca_pipeline.py --srt data/raw/srt/8.srt --model marbertv2-haca
 python src/haca_pipeline.py --srt-dir data/raw/srt --model marbertv2-haca \
@@ -77,8 +87,11 @@ python src/haca_pipeline.py --srt-dir data/raw/srt --stub
 ## 6. Améliorations futures (par ordre d'impact)
 1. **Meilleure ASR** (si la transcription devient contrôlable) : c'est le plus gros levier —
    le modèle échoue surtout sur ce qu'il ne peut pas lire.
-2. **Escalade LLM locale** : router les segments à faible confiance vers un LLM darija
-   auto-hébergé (Atlas-Chat, `src/eval_llm_rubric.py` en mode rubrique) pour un second avis.
+2. **Escalade LLM** : l'option **API Cloud** (LLM via Chat Completions) permet déjà d'utiliser
+   un LLM pour l'ensemble de la classification en un batch. Une prochaine étape serait le
+   **second avis** : router uniquement les segments à faible confiance vers le LLM (Atlas-Chat
+   en local ou API Cloud), pour économiser les appels API tout en bénéficiant de l'intelligence
+   du LLM sur les cas ambigus.
 3. **Évaluation au niveau segment** : annoter quelques émissions au niveau segment (humain)
    pour mesurer la qualité réelle du système — la métrique par énoncé sous-estime sa valeur.
 4. **Calibrage des seuils de révision** (`COVERAGE_MIN`, `MAJORITY_MIN`, `CONF_MIN`) selon le
