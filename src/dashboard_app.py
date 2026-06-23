@@ -44,6 +44,7 @@ CLASSIFIER_CHOICES = {
     "camembert-haca": "Français — fine-tune HACA (camembert-haca)",
     "ensemble-fr": "Français — ensemble (xlm-r-haca + xlm-sentiment)",
     "distilcamembert": "Français — off-the-shelf Hub (distilcamembert, 5★)",
+    "api": "API Cloud (Z.ai / OpenAI compatible)",
 }
 
 st.set_page_config(page_title="Tonalité HACA", page_icon="📺", layout="wide")
@@ -51,7 +52,10 @@ st.set_page_config(page_title="Tonalité HACA", page_icon="📺", layout="wide")
 
 @st.cache_resource(show_spinner=False)
 def get_classifier(choice: str):
-    return hp.load_stub() if choice == "stub" else hp.load_encoder(choice)
+    """Return (predict_proba, thr) for non-API models (cached)."""
+    if choice == "stub":
+        return hp.load_stub()
+    return hp.load_encoder(choice)
 
 
 @st.cache_resource(show_spinner=False)
@@ -97,17 +101,36 @@ model_choice = st.sidebar.selectbox(
     list(CLASSIFIER_CHOICES),
     format_func=lambda k: CLASSIFIER_CHOICES[k],
     help="« Auto » détecte la langue du SRT et choisit le modèle. « stub » = démo sans modèle. "
-         "Les modèles arabe/darija sont des encoders fine-tunés HACA (locaux) ; le modèle "
-         "français est un modèle de sentiment du Hub (mis en cache localement).")
+         "« API Cloud » = LLM via API compatible OpenAI (Z.ai, OpenAI, Groq…).")
+
+# API cloud options
+api_key = ""
+api_url = "https://api.z.ai/api/paas/v4/chat/completions"
+api_model = "glm-5.2"
+use_api_topic = False
+if model_choice == "api":
+    api_key = st.sidebar.text_input("Clé API", type="password",
+                                    help="Ta clé API pour le fournisseur choisi.")
+    api_url = st.sidebar.text_input("URL de l'API", "https://api.z.ai/api/paas/v4/chat/completions",
+                                    help="Endpoint compatible OpenAI Chat Completions.")
+    api_model = st.sidebar.text_input("Modèle", "glm-5.2",
+                                      help="Nom du modèle (ex: glm-5.2, gpt-4o, gemma2…).")
+    use_api_topic = st.sidebar.checkbox(
+        "Utiliser le même modèle pour le sujet (économie de tokens)",
+        help="Cochez pour que le même appel API détermine aussi le sujet de l'émission.")
+
+# Topic detection — disabled when the API classifier handles both
+topic_disabled = (model_choice == "api" and use_api_topic)
 topic_mode = st.sidebar.selectbox(
     "Détection du sujet",
     ["mots-clés (rapide)", "Ollama (LLM local)", "Atlas-Chat-2B (CUDA)", "aucune"],
+    disabled=topic_disabled,
     help="« mots-clés » = instantané, partout. « Ollama » = ton LLM local (GPU intégré, rapide). "
          "« Atlas-Chat-2B » = transformers 4-bit (CUDA seulement).")
 ollama_model = st.sidebar.text_input(
     "Modèle Ollama", "gemma2",
     help="Le modèle que tu as pull (ex: gemma2, aya, qwen2.5:7b). Nécessite `ollama serve`.") \
-    if topic_mode.startswith("Ollama") else "gemma2"
+    if (not topic_disabled and topic_mode.startswith("Ollama")) else "gemma2"
 floor = st.sidebar.slider("Seuil non-neutre (sensibilité)", 0.05, 0.50, hp.NONNEU_FLOOR, 0.05,
                           help="Part minimale de négatif/positif pour basculer le verdict. "
                                "Plus bas = plus sensible.")
@@ -115,37 +138,50 @@ window = st.sidebar.slider("Énoncés par segment", 5, 30, hp.WINDOW, 1)
 
 # ── header ───────────────────────────────────────────────────────────────────
 st.title("📺 Tableau de bord — Tonalité broadcast HACA")
-st.caption("Charger un fichier SRT → verdict par émission, pourcentages, et tonalité par segment. "
-           "Le système filtre l'ASR illisible et signale les cas incertains.")
+st.caption("Configure les réglages à gauche, charge un SRT, puis clique sur « Lancer l'analyse ».")
 
-up = st.file_uploader("Fichier SRT", type=["srt"])
+# ── file upload + run button ────────────────────────────────────────────────
+with st.form("analysis_form"):
+    up = st.file_uploader("Fichier SRT", type=["srt"])
+    run = st.form_submit_button("Lancer l'analyse", type="primary")
 
-if up is None:
-    st.info("⬆️ Charger un fichier .srt pour démarrer. Astuce : essayer `data/raw/srt/8.srt` "
-            "(documentaire corruption → négatif) ou `data/raw/srt/4.srt` (explicatif → neutre).")
+if not run:
+    if up is None:
+        st.info("⬆️ Charger un fichier .srt puis cliquer sur « Lancer l'analyse ». "
+                "Astuce : essayer `data/raw/srt/8.srt` (documentaire corruption → négatif) "
+                "ou `data/raw/srt/4.srt` (explicatif → neutre).")
     st.stop()
 
-# ── run the pipeline on the upload ───────────────────────────────────────────
-hp.NONNEU_FLOOR = floor      # the slider drives the lean rule
+# ── run the pipeline (only when the button is clicked) ──────────────────────
+hp.NONNEU_FLOOR = floor
 hp.WINDOW = window
+
 with tempfile.NamedTemporaryFile(suffix=".srt", delete=False) as tf:
     tf.write(up.read()); tmp = tf.name
 
 topic = None
-# Detect the SRT language first — it drives the "auto" classifier and the info banner.
-_, rows = hp.segment_srt(tmp)
-clean_rows = [r["text"] for r in rows if r["clean"]]
-full_text = " ".join(clean_rows) or " ".join(r["text"] for r in rows)
-lang = hp.detect_lang(full_text) if full_text else "arabe"
-resolved_model = hp.pick_model_for_lang(lang) if model_choice == "auto" else model_choice
-
+rep = None
 try:
-    with st.spinner(f"Analyse de la tonalité avec « {CLASSIFIER_CHOICES[resolved_model]} »…"):
-        predict_proba, thr = get_classifier(resolved_model)
+    _, rows = hp.segment_srt(tmp)
+    clean_rows = [r["text"] for r in rows if r["clean"]]
+    full_text = " ".join(clean_rows) or " ".join(r["text"] for r in rows)
+    lang = hp.detect_lang(full_text) if full_text else "arabe"
+    resolved_model = hp.pick_model_for_lang(lang) if model_choice == "auto" else model_choice
+
+    include_topic = (model_choice == "api" and use_api_topic)
+
+    with st.spinner(f"Analyse de la tonalité avec "
+                     f"« {CLASSIFIER_CHOICES.get(resolved_model, resolved_model)} »…"):
+        if resolved_model == "api":
+            predict_proba, thr = hp.load_api_classifier(
+                api_model, api_key, api_url, include_topic=include_topic)
+        else:
+            predict_proba, thr = get_classifier(resolved_model)
         rep = hp.process_file(tmp, predict_proba, thr)
-    if topic_mode != "aucune":
-        # LLM backends: opening (intros state the subject) + a spread, short prefill.
-        # Keyword: the full text (more keyword evidence = better).
+
+    if include_topic:
+        topic = predict_proba.topic
+    elif topic_mode != "aucune":
         if topic_mode.startswith(("Ollama", "Atlas")) and clean_rows:
             head = clean_rows[:4]
             rest = clean_rows[4:]
@@ -164,15 +200,44 @@ try:
                            "modèle plus petit (`qwen2.5:3b`) ; vérifier `ollama serve` ; ou "
                            "« mots-clés ». `ollama ps` doit montrer le modèle sur GPU, pas 100% CPU.")
                 topic = get_topic_detector("mots-clés", ollama_model)(full_text)
+
+    # Warn if the API classifier couldn't parse many responses.
+    if resolved_model == "api":
+        rate = predict_proba.fallback_rate
+        if rate > 0.5:
+            msg = f"⚠ L'API n'a pas pu interpréter **{rate:.0%}** des réponses du modèle."
+            if predict_proba.first_raw:
+                msg += f" Exemple de réponse inattendue : « {predict_proba.first_raw} »"
+            st.warning(msg)
+        elif rate > 0.0:
+            st.info(f"ℹ {rate:.0%} des réponses API étaient inattendues "
+                     "(utilisées comme neutre par défaut).")
+
+    # Store results in session_state so they survive sidebar changes.
+    st.session_state.rep = rep
+    st.session_state.topic = topic
+    st.session_state.lang = lang
+    st.session_state.resolved_model = resolved_model
+
 finally:
     os.unlink(tmp)
+
+# ── display results (from session_state) ────────────────────────────────────
+if "rep" not in st.session_state:
+    st.stop()
+rep = st.session_state.rep
+topic = st.session_state.get("topic")
+lang = st.session_state.lang
+resolved_model = st.session_state.resolved_model
 
 p = rep["programme"]
 tone = p["tone"]
 
-# ── headline: language + subject + verdict ───────────────────────────────────
-# Always show which model produced the verdict (avoids confusing auto vs manual picks).
-model_note = f" · modèle : `{CLASSIFIER_CHOICES.get(resolved_model, resolved_model)}`" + (
+# Always show which model produced the verdict.
+model_label = CLASSIFIER_CHOICES.get(resolved_model, resolved_model)
+if resolved_model == "api":
+    model_label = f"API Cloud ({api_model})"
+model_note = f" · modèle : `{model_label}`" + (
     " (auto)" if model_choice == "auto" else "")
 st.markdown(f"### 🗣️ Langue détectée : {LANG_FR.get(lang, lang)}{model_note}")
 if topic:

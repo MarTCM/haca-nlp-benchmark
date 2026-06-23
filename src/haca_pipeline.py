@@ -210,6 +210,143 @@ def load_stub():
     return predict_proba, {"neg": 0.5, "neu": 0.5, "pos": 0.5}
 
 
+def load_api_classifier(model: str = "glm-5.2", api_key: str = "",
+                        url: str = "https://api.z.ai/api/paas/v4/chat/completions",
+                        timeout: int = 240, include_topic: bool = False):
+    """Return (predict_proba, thr) for a chat-completions API hosted classifier.
+
+    Supports any OpenAI-compatible endpoint (Z.ai, OpenAI, Together, Groq, etc.).
+
+    When *include_topic* is True the first call to predict_proba also extracts the
+    programme topic from a representative sample and stores it as
+    ``predict_proba.topic``, saving a separate topic-detection call.
+    """
+    import re
+    import requests
+
+    # Label aliases in multiple languages (mirrors topic_detect.snap_category).
+    _SENTIMENT_ALIASES = {
+        "neg": ["negatif", "negative", "négatif", "neg", "سلبي", "سالب"],
+        "neu": ["neutre", "neutral", "neu", "محايد", "حيادي"],
+        "pos": ["positif", "positive", "pos", "إيجابي", "موجب"],
+    }
+
+    def _snap_sentiment(raw: str) -> str | None:
+        a = raw.strip().lower()
+        for label, keys in _SENTIMENT_ALIASES.items():
+            if any(k in a for k in keys):
+                return label
+        return None
+
+    SENTIMENT_PROMPT = (
+        "Tu es un assistant spécialisé dans l'analyse de la tonalité des contenus "
+        "broadcast médiatiques. Analyse le texte suivant et classe-le comme "
+        "'positif', 'neutre', ou 'negatif'. "
+        "Réponds uniquement par un seul mot : positif, neutre, ou negatif.\n\n"
+        "Texte : {text}\n"
+        "Classification :"
+    )
+
+    def _call(prompt: str, max_tokens: int = 512) -> str:
+        headers = {
+            "Authorization": f"Bearer {api_key}",
+            "Content-Type": "application/json",
+        }
+        payload = {
+            "model": model,
+            "messages": [{"role": "user", "content": prompt}],
+            "temperature": 0.0,
+            "max_tokens": max_tokens,
+        }
+        r = requests.post(url, headers=headers, json=payload, timeout=timeout)
+        r.raise_for_status()
+        raw = r.json()["choices"][0]["message"]["content"] or ""
+        # Strip possible think/reasoning tags from models that output them.
+        raw = re.sub(r"<think>.*?</think>", " ", raw, flags=re.S)
+        raw = re.sub(r"<think>.*$", " ", raw, flags=re.S)
+        return raw.strip()
+
+    def predict_proba(texts):
+        texts_list = list(texts)
+        n = len(texts_list)
+
+        if include_topic and texts_list:
+            import topic_detect as td
+            head = texts_list[:4]
+            rest = texts_list[4:]
+            step = max(1, len(rest) // 8)
+            sample = " ".join(head + rest[::step][:8])[:1500]
+            topic_prompt = td.TOPIC_PROMPT.format(text=sample)
+            try:
+                resp = _call(topic_prompt)
+                lines = [ln.strip(" .،؛:-\"'*`") for ln in resp.splitlines()]
+                lines = [ln for ln in lines if ln]
+                predict_proba.topic = (
+                    td.snap_category(lines[0]) if lines else "غير محدد")
+            except Exception:
+                predict_proba.topic = None
+        else:
+            predict_proba.topic = None
+
+        if n == 0:
+            predict_proba.fallback_rate = 0.0
+            predict_proba.first_raw = None
+            return []
+
+        # Single batch request — all utterances in one prompt, ask for one label
+        # per line in order.
+        delim = "\n---\n"
+        body = delim.join(f"[{i}] {t}" for i, t in enumerate(texts_list))
+        prompt = (
+            "Analyse la tonalité de chaque énoncé ci-dessous (séparés par ---).\n"
+            "Réponds avec un seul mot par énoncé dans le même ordre, un par ligne.\n"
+            "Mots autorisés : positif, neutre, negatif.\n"
+            "Exemple :\n"
+            "positif\nneutre\nnegatif\n\n"
+            f"{body}\n\n"
+            "Réponse (un mot par ligne) :"
+        )
+
+        fallback_count = 0
+        first_raw = None
+        out = []
+        try:
+            raw = _call(prompt, max_tokens=min(32 * n, 2048))
+            lines = raw.strip().splitlines()
+            for line in lines:
+                ln = line.strip().lower()
+                ln = ln.strip(" .،؛:-\"'*`[]()")
+                ln = re.sub(r"^\d+[.)\]\s]*", "", ln).strip()
+                if not ln:
+                    continue
+                label = _snap_sentiment(ln)
+                if label is not None:
+                    d = {"neg": 0.025, "neu": 0.025, "pos": 0.025}
+                    d[label] = 0.95
+                    out.append(d)
+                    if len(out) >= n:
+                        break
+
+            while len(out) < n:
+                fallback_count += 1
+                if first_raw is None:
+                    first_raw = raw[:200]
+                out.append({"neg": 0.33, "neu": 0.34, "pos": 0.33})
+        except requests.RequestException as e:
+            fallback_count = n
+            first_raw = f"(exception) {e}"
+            out = [{"neg": 0.33, "neu": 0.34, "pos": 0.33}] * n
+
+        predict_proba.fallback_rate = fallback_count / n
+        predict_proba.first_raw = first_raw
+        return out
+
+    predict_proba.topic = None
+    predict_proba.fallback_rate = 0.0
+    predict_proba.first_raw = None
+    return predict_proba, {"neg": 0.5, "neu": 0.5, "pos": 0.5}
+
+
 def shifted_argmax(proba: dict, thr: dict) -> str:
     return max(CLASSES, key=lambda c: proba.get(c, 0.0) - thr.get(c, 0.5))
 
