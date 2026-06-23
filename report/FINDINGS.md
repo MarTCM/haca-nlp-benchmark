@@ -349,6 +349,158 @@ L'écart sur la darija est trop large pour recommander cette option en productio
 
 ---
 
+## 8. Adaptation au domaine — HACA-Sent v3 (juin 2026)
+
+Suite à la §5, le jeu d'entraînement in-domaine a été **entièrement reconstruit** pour combler
+l'écart broadcast, en visant surtout la classe positive (F1 = 0.19, le vrai goulot).
+
+### 8.1 Ce qui a changé
+- **Rubrique v3 canonique** (content-valence) : on étiquette ce que le contenu *décrit*, pas le
+  ton du présentateur ([ANNOTATION_RUBRIC_V3.md](ANNOTATION_RUBRIC_V3.md)).
+- **Ré-extraction qualité** (`src/build_haca_pool.py`) : découpage des longs paragraphes
+  YouTube, filtre de bruit ASR, et filtre d'anti-fuite (5-grammes) contre le jeu de test
+  → **1199 utterances propres**.
+- **Étiquetage manuel** des 1199 (neu 973 / neg 191 / pos 35) + **189 synthétiques**
+  pos-pondérées (129 pos) → `haca_train_v3.csv` : **1388 lignes** (neu 993 / neg 231 / pos 164).
+- Fine-tuning avec **perte focale pondérée par classe + sur-échantillonnage ×3–4 de pos**.
+- Provenance et limites détaillées : [HACA_DATASET.md](HACA_DATASET.md).
+
+### 8.2 Résultats — jeu domaine réel v2 (neg 63 / neu 111 / pos 20)
+
+| Modèle | macro-F1 | (calibré) | F1 neg | F1 neu | **F1 pos** | rappel pos | darija\_ar |
+|---|---|---|---|---|---|---|---|
+| MARBERTv2-haca (MAC + broadcast) | 0.459 | 0.521 | 0.500 | 0.744 | 0.133 | 0.10 | 0.835 |
+| MARBERTv2-haca-only (broadcast seul) | 0.469 | ~0.52 | 0.522 | 0.755 | 0.129 | 0.10 | 0.830 |
+| DarijaBERT-haca | 0.453 | 0.523 | 0.465 | 0.708 | 0.188 | 0.15 | 0.767 |
+| Atlas-Chat-2B (rubrique en prompt) | 0.493 | — | 0.619 | 0.537 | **0.322** | **0.70** | — |
+| Atlas-Chat-9B (rubrique en prompt) | **0.504** | — | 0.584 | 0.634 | 0.292 | 0.35 | — |
+| *(rappel §5) MARBERTv2 brut* | 0.380 | 0.503 | 0.226 | 0.824 | 0.273 | 0.30 | 0.844 |
+
+### 8.3 Constatations
+1. **Aucune régression sur darija_ar** (0.83) : les modèles restent excellents sur le texte propre.
+2. **Tous plafonnent à ~0.50–0.52** sur le broadcast. **L'objectif 0.70 n'est pas atteint.**
+3. **La classe pos reste le goulot pour les encoders** (F1 0.13–0.19) malgré pos ×4.7, perte
+   focale et sur-échantillonnage. Retirer MAC (haca-only) n'a rien changé — l'hypothèse selon
+   laquelle MAC polluait le signal positif était fausse.
+4. **Le LLM avec rubrique gère bien mieux la classe positive** (F1 0.29–0.32, rappel jusqu'à
+   0.70) car il *applique* la consigne au lieu de devoir l'apprendre.
+5. **Encoder calibré (~0.52) et LLM-rubrique (~0.50) à égalité en macro-F1**, mais profils
+   opposés : l'encoder excelle sur neu/neg et est aveugle au positif ; le LLM est le seul à
+   détecter pos.
+
+### 8.4 Pourquoi le plafond — le jeu de test est le facteur limitant
+L'inspection des 20 positifs du test l'explique :
+- **sources partiellement absentes** : certains positifs viennent de fichiers (`f1`, `d1`, `14`,
+  un `9.srt` « Sahara 2025 ») qui **ne sont pas dans le corpus SRT actuel** — le modèle ne les a
+  jamais vus ;
+- **frontière pos/neu différente de la rubrique v3** : le test compte comme « pos » des énoncés
+  que la rubrique v3 classe neu (un service qui existe, l'interdiction de fumer dans le train,
+  une incitation à l'investissement) ;
+- **20 positifs, un seul annotateur** → F1 pos à très haute variance.
+
+Le plafond est donc surtout un problème **d'alignement d'annotation + sources non vues + petit
+échantillon**, pas un problème de modèle. Viser 0.70 sur ce jeu précis n'est pas équitable tant
+qu'il n'est pas reconstruit sous la même rubrique.
+
+#### 8.4 bis — Étude de cohérence d'annotation (v2 humain vs v3 rubrique)
+Pour quantifier la subjectivité, les **194 mêmes énoncés** ont été ré-étiquetés sous la
+rubrique v3 (`src/apply_annotations_domaine_reel_v3.py` → `domaine_reel_v3.csv`).
+
+| | neg | neu | pos |
+|---|---|---|---|
+| v2 (humain) | 63 | 111 | 20 |
+| v3 (rubrique, Claude) | 45 | 133 | 16 |
+
+- **Accord 88.7 %, kappa de Cohen = 0.784** (« substantiel »).
+- Les 22 changements vont **tous vers neu** (18 neg→neu, 4 pos→neu) : fragments ASR illisibles
+  et cas-limites (un service qui existe, une interdiction de fumer, un mécanisme de préférence).
+- **La classe positive passe de 20 à 16** — soit 20 % de variation sur la classe critique.
+
+Conséquence : on **ne peut pas mesurer de façon fiable une classe positive de 16–20 exemples**
+quand une annotation à kappa 0.78 la fait bouger de 20 %. C'est la limite dure du benchmark
+actuel. `domaine_reel_v3.csv` est un **artefact de cohérence** (annoté par Claude, même rubrique
+que l'entraînement → biais d'alignement) à faire **adjuger par un second annotateur humain**
+avant de servir de gold officiel ; le v2 humain reste le gold indépendant.
+
+**Ré-évaluation sur le gold v3 — une hypothèse réfutée.** On a re-scoré les modèles sur v3 :
+
+| Modèle | macro-F1 (v2) | macro-F1 (v3) | F1 pos (v3, n=16) |
+|---|---|---|---|
+| MARBERTv2-haca — défaut | 0.459 | **0.452** | 0.077 |
+| MARBERTv2-haca — calibré | 0.521 | **0.518** | 0.138 |
+| Atlas-Chat-2B — rubrique | 0.493 | **0.452** | 0.289 |
+
+Contrairement à ce qu'on attendait, **ré-étiqueter sous une rubrique cohérente n'améliore pas
+l'encoder** (0.452 vs 0.459). Le plafond de l'encoder est donc **invariant à la version
+d'annotation** : l'écart n'est **pas** principalement un problème d'alignement (l'intuition de
+§8.4 est en partie réfutée), mais **structurel** — tâche difficile pour un encoder compact +
+classe positive non mesurable (1–2 corrects sur 16–20 quelle que soit la rubrique). Le LLM, lui,
+baisse sur v3 (0.452 vs 0.493) car v3 est plus neu-lourd et il **sous-prédit neu** (rappel
+neu = 0.41) ; son avantage sur v2 venait en partie de la moindre proportion de neutre. Sur v3
+(proportion de neutre proche du réel), **encoder calibré ≈ LLM-rubrique (~0.45–0.52)**.
+
+**Conclusion affinée :** sur ce contenu broadcast, tous les modèles plafonnent à ~0.45–0.52
+**quelle que soit la rubrique** ; la classe positive (16–20 ex., F1 0.08–0.32) est non mesurable.
+Ce plafond n'est réparable ni par ré-étiquetage ni par plus de données d'entraînement : il faut
+un **jeu d'évaluation plus grand, équilibré et multi-annotateur**, ce qui suppose d'élargir le
+corpus source (aujourd'hui limité à 12 fichiers pauvres en positif).
+
+#### 8.4 ter — Étude de cas « facile ≠ bon » (jeu équilibré v4)
+Pour atteindre les effectifs du protocole sur les 12 fichiers actuels, on a construit
+`domaine_reel_v4_balanced` (450 énoncés, **neg 150 / neu 200 / pos 100**) en complétant les
+194 énoncés réels par **256 énoncés synthétiques** (voir HACA_TEST_V4_DATASHEET.md). Résultat
+**contre-intuitif** : tout le monde « réussit ».
+
+| Modèle | macro-F1 (v2 = sous-ensemble réel) | macro-F1 (v4 complet) | F1 pos (v2 → v4) |
+|---|---|---|---|
+| MARBERTv2-haca (encoder) | 0.459 | **0.796** | 0.133 → **0.770** |
+| Atlas-Chat-2B (LLM, zero-shot) | 0.493 | **0.714** | 0.322 → **0.667** |
+
+**Pourquoi le saut — et pourquoi il ne valide PAS le jeu.** Le sous-ensemble `human_gold` de v4
+**est exactement** `domaine_reel_v2` ; sur lui les scores restent ~0.46–0.49. Le saut vient
+**uniquement** des 256 énoncés synthétiques, qui sont **propres, non ambigus et prototypiques**
+(« المنتخب الوطني تأهل لكأس العالم », « أسعار الخضر طلعات »…) — **faciles pour n'importe quel
+modèle**. Le broadcast réel est l'inverse : ASR bruité, valence subtile, majorité neutre.
+
+Deux effets distincts, isolables :
+1. **Facilité** (profite à *tous*, y compris au LLM **zero-shot** qui n'a jamais vu ce
+   synthétique) — d'où le saut d'Atlas-Chat-2B (+0.34 sur pos) ;
+2. **Mémorisation de style** (bonus *en plus* pour les encoders, entraînés sur ce synthétique)
+   — l'encoder gagne **+0.64** sur pos, soit ~2× le LLM. Cet écart EST la mémorisation ; le saut
+   commun est la facilité.
+
+**Leçon :** un jeu peut être **plus grand, équilibré, et faire monter tous les scores à 0.7+**
+tout en étant un **moins bon benchmark** que les 194 exemples réels. La **taille et l'équilibre
+ne suffisent pas** ; un bon jeu doit **discriminer** et refléter la difficulté réelle. Le chiffre
+honnête reste ~0.46–0.49 (`domaine_reel_v2`). `domaine_reel_v4_balanced` est donc un **diagnostic
+par classe**, **pas** un gold — l'ingrédient manquant n'est pas le *nombre* d'exemples, mais des
+exemples **réels, difficiles, représentatifs et annotés par des humains**.
+
+### 8.5 Recommandation révisée
+- **Déploiement** : pour une tâche de *content-valence*, privilégier un **LLM instructable avec
+  la rubrique en prompt** (Atlas-Chat) si la détection du positif compte — c'est le seul à la
+  gérer (rappel pos 0.35–0.70), au prix de la latence (~185–450 ms vs ~3 ms encoder). Sinon, un
+  **encoder fine-tuné + calibration de seuils** offre le même macro-F1 (~0.52) à 100× la vitesse,
+  mais avec un angle mort sur le positif.
+- **Étape réelle suivante** : **reconstruire le jeu de test broadcast** sous la rubrique v3 —
+  mêmes fichiers sources que l'entraînement, ≥ 50 positifs, deux annotateurs avec kappa de Cohen.
+  Le jeu actuel (20 pos, pilote, mono-annotateur) ne mesure pas fiablement la classe positive.
+
+### 8.6 Conclusion
+Sur le contenu broadcast, **tous les modèles plafonnent à ~0.45–0.52** — encoder calibré et
+LLM-rubrique inclus — et ce **quelle que soit la rubrique d'annotation** (vérifié sur v2 et v3).
+L'encoder reste aveugle au positif ; le LLM le détecte mieux (rappel pos 0.70–0.75) mais
+sous-prédit le neutre, si bien que son avantage s'évapore dès que le jeu est neu-lourd (le cas
+réel). La *content-valence* est une tâche de **suivi de consigne** qui favorise un LLM
+instructable **quand le positif compte**, mais pour un flux majoritairement neutre l'**encoder
+calibré (~0.52, 100× plus rapide)** est le choix pragmatique. Surtout, le levier décisif n'est
+**ni le modèle, ni la quantité de données d'entraînement, ni le ré-étiquetage** : c'est la
+**taille et la représentativité du jeu d'évaluation** — une classe positive de 16–20 exemples
+(kappa 0.78) ne peut tout simplement pas être mesurée. Élargir le corpus source au-delà des 12
+fichiers actuels (pauvres en positif) est le préalable à tout progrès chiffrable.
+
+---
+
 ## Annexes
 
 - Résultats détaillés par classe : `results/*.json`

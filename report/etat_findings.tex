@@ -1,0 +1,259 @@
+% État du projet et conclusions — note de synthèse (4 pages)
+% Compiler avec pdflatex (2 passes) ou Overleaf
+\documentclass[11pt, a4paper]{article}
+
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[french]{babel}
+\usepackage[top=2cm, bottom=2cm, left=2.5cm, right=2.5cm]{geometry}
+\usepackage{booktabs}
+\usepackage[dvipsnames, table]{xcolor}
+\usepackage{parskip}
+\usepackage{lmodern}
+\usepackage{microtype}
+\usepackage{titlesec}
+\usepackage{enumitem}
+\usepackage{hyperref}
+
+\definecolor{hacablue}{RGB}{0,70,127}
+\definecolor{goodgreen}{RGB}{0,150,80}
+\definecolor{warnred}{RGB}{180,40,40}
+
+\titleformat{\section}{\large\bfseries\color{hacablue}}{\thesection.}{0.5em}{}[\vspace{-4pt}\rule{\linewidth}{0.4pt}]
+\titleformat{\subsection}{\normalsize\bfseries}{\thesubsection.}{0.4em}{}
+
+\setlength{\parindent}{0pt}
+\hypersetup{colorlinks=true, linkcolor=hacablue, urlcolor=hacablue}
+
+% ────────────────────────────────────────────────────────────
+\begin{document}
+
+\begin{center}
+  {\Large\bfseries\color{hacablue} Analyse de sentiment multilingue pour la HACA}\\[3pt]
+  {\large État du projet et conclusions}\\[5pt]
+  {\normalsize Marwane ElBaraka \quad|\quad Juin 2026}
+\end{center}
+
+\vspace{2pt}\rule{\linewidth}{0.8pt}\vspace{6pt}
+
+\textbf{Objet.} Cette note résume l'état actuel du projet et ses conclusions
+principales. Le projet vise à doter la HACA d'un outil d'analyse de sentiment
+adapté au contenu audiovisuel marocain (darija, arabizi, MSA, français). Neuf
+modèles ont été évalués sur des jeux publics, puis confrontés à un jeu
+« domaine réel » construit à partir de vraies émissions. La phase d'adaptation
+au domaine (\emph{HACA-Sent v3}) est terminée et un \textbf{système de tonalité
+déployable} a été construit sur cette base ; les conclusions sont stables.
+
+% ────────────────────────────────────────────────────────────
+\section{Périmètre et données}
+
+\textbf{Modèles évalués (9).} 3 encoders prêts à l'emploi (xlm-t,
+camelbert-da, distilcamembert), 4 encoders fine-tunés (MARBERTv2, DarijaBERT,
+DarijaBERT-arabizi, QARIB) et 2 LLM en zéro-shot quantifiés 4-bit
+(Atlas-Chat-2B et 9B).
+
+\textbf{Jeux de test publics.} 1\,000 exemples par langue, stratifiés :
+darija arabe (MAC), arabizi (MYC-Latin), MSA (ASTD), français (Allociné).
+
+\textbf{Jeu domaine réel.} 194 énoncés extraits de 12 fichiers \texttt{.srt}
+d'émissions HACA / vidéos marocaines (100~\% darija en script arabe : débats
+politiques, économie, santé, anticorruption, histoire). Annotés selon une
+philosophie de \emph{valence de contenu} (\texttt{domaine\_reel\_v2.csv} :
+neg~63 / neu~111 / pos~20). Un corpus in-domaine de 1\,388 énoncés
+(\texttt{haca\_train\_v3.csv}) a été construit pour l'adaptation.
+
+% ────────────────────────────────────────────────────────────
+\section{Résultats sur les jeux publics}
+
+Sur les corpus publics, les modèles spécialisés atteignent un très bon niveau.
+
+\begin{center}
+\small
+\begin{tabular}{llc}
+\toprule
+\textbf{Langue} & \textbf{Meilleur modèle} & \textbf{Macro-F1} \\
+\midrule
+arabizi    & DarijaBERT-arabizi (fine-tuné) & \textbf{0.983} \\
+français   & distilcamembert (prêt à l'emploi) & \textbf{0.949} \\
+MSA        & camelbert-da (prêt à l'emploi) & \textbf{0.924} \\
+darija\_ar & MARBERTv2 (fine-tuné) & \textbf{0.844} \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\textbf{Deux constats marquants :}
+\begin{itemize}[leftmargin=1.2em, itemsep=2pt]
+  \item \textbf{La taille ne garantit pas la performance.} Atlas-Chat-2B
+  (0.978 sur l'arabizi) talonne le meilleur encoder à 0,5~point, avec 10$\times$
+  plus de paramètres et 47$\times$ plus de latence.
+  \item \textbf{Inversion d'échelle.} Atlas-Chat-9B est \emph{meilleur} que le 2B
+  sur la darija 3-classes (0.833 vs 0.727) mais \emph{pire} sur l'arabizi binaire
+  (0.754 vs 0.978) : mieux calibré, le 9B prédit « neutre » dans 42~\% des cas
+  — classe absente du jeu binaire, donc comptée comme erreur.
+\end{itemize}
+
+\textbf{Décision (issue du PLAN).} Sur darija et arabizi, l'écart entre le
+meilleur encoder fine-tuné et le meilleur LLM est $<5$~points : l'\textbf{encoder
+fine-tuné est recommandé} (\textasciitilde3~ms vs 185--450~ms).
+
+% ────────────────────────────────────────────────────────────
+\section{L'écart domaine réel — le résultat central pour la HACA}
+
+Confrontés au contenu broadcast réel, \textbf{tous} les modèles chutent
+fortement (de $-0.30$ à $-0.46$ de macro-F1).
+
+\begin{center}
+\small
+\begin{tabular}{lccc}
+\toprule
+\textbf{Modèle} & \textbf{Public darija} & \textbf{Domaine réel (v2)} & \textbf{Écart} \\
+\midrule
+MARBERTv2  & 0.844 & 0.380 & \textcolor{warnred}{$-0.464$} \\
+QARIB      & 0.827 & 0.386 & \textcolor{warnred}{$-0.441$} \\
+DarijaBERT & 0.775 & 0.415 & $-0.360$ \\
+xlm-t      & 0.723 & \textbf{0.489} & $-0.234$ \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+L'écart est \textbf{structurel}, pas accidentel :
+\begin{itemize}[leftmargin=1.2em, itemsep=2pt]
+  \item \textbf{Registre.} Les tweets d'entraînement sont explicites et émotionnels ;
+  le broadcast est mesuré et journalistique (critique indirecte jamais vue à l'entraînement).
+  \item \textbf{Déséquilibre.} Le domaine réel est à 75~\% neutre ; les modèles
+  fine-tunés sur MAC (majorité positive) sur-apprennent des corrélations « raccourci »
+  (argot, emojis) absentes du broadcast.
+  \item \textbf{Renversement de classement.} xlm-t (non fine-tuné, donc sans ces
+  raccourcis) \emph{généralise le mieux} (0.489) alors qu'il est 4\textsuperscript{e} sur le public.
+\end{itemize}
+
+% ────────────────────────────────────────────────────────────
+\section{Adaptation au domaine — HACA-Sent v3}
+
+Pour combler l'écart, le jeu d'entraînement in-domaine a été \textbf{entièrement
+reconstruit} (rubrique content-valence v3, ré-extraction qualité avec filtres
+ASR et anti-fuite, étiquetage manuel de 1\,199 énoncés + 189 synthétiques
+pos-pondérés), puis ré-entraîné avec perte focale pondérée et sur-échantillonnage
+$\times$3--4 de la classe positive.
+
+\begin{center}
+\small
+\begin{tabular}{lccc}
+\toprule
+\textbf{Modèle} & \textbf{Macro-F1} & \textbf{F1 pos} & \textbf{Rappel pos} \\
+\midrule
+MARBERTv2-haca (calibré)        & 0.521 & 0.133 & 0.10 \\
+DarijaBERT-haca (calibré)       & 0.523 & 0.188 & 0.15 \\
+Atlas-Chat-2B (rubrique en prompt) & 0.493 & \textbf{0.322} & \textbf{0.70} \\
+Atlas-Chat-9B (rubrique en prompt) & \textbf{0.504} & 0.292 & 0.35 \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\textbf{Conclusions :}
+\begin{enumerate}[leftmargin=1.4em, itemsep=2pt]
+  \item \textbf{Aucune régression} sur le texte propre (darija\_ar reste \textasciitilde0.83).
+  \item \textbf{Tous plafonnent à \textasciitilde0.50--0.52} : l'objectif de 0.70
+  n'est pas atteint. Retirer MAC (variante « haca-only ») n'a rien changé.
+  \item \textbf{Le LLM avec rubrique est le seul à détecter le positif}
+  (rappel jusqu'à 0.70) : il \emph{applique} la consigne au lieu de devoir l'apprendre.
+  Encoder calibré et LLM-rubrique sont à égalité en macro-F1, mais avec des
+  profils opposés (l'encoder est aveugle au positif).
+\end{enumerate}
+
+\subsection{Pourquoi le plafond : le facteur limitant est le jeu de test}
+
+Deux études le confirment :
+\begin{itemize}[leftmargin=1.2em, itemsep=2pt]
+  \item \textbf{Cohérence d'annotation.} Les 194 mêmes énoncés ré-étiquetés sous
+  la rubrique v3 donnent un accord de 88.7~\% et un \textbf{kappa de Cohen = 0.784}
+  (« substantiel »), mais la classe positive passe de 20 à 16 — soit 20~\% de
+  variation sur la classe critique.
+  \item \textbf{Hypothèse réfutée.} Ré-évalués sur le gold v3 (aligné),
+  les encoders ne s'améliorent \emph{pas} (0.452 vs 0.459). Le plafond est donc
+  \textbf{invariant à la rubrique} : il est structurel, pas un problème d'alignement.
+\end{itemize}
+
+Une classe positive de 16--20 exemples (kappa 0.78) \textbf{ne peut tout simplement
+pas être mesurée de façon fiable}. Le levier décisif n'est ni le modèle, ni la
+quantité de données d'entraînement, ni le ré-étiquetage : c'est la \textbf{taille
+et la représentativité du jeu d'évaluation}.
+
+% ────────────────────────────────────────────────────────────
+\section{Solution déployable — système de tonalité}
+
+Puisqu'un classifieur \emph{par énoncé} plafonne (\textasciitilde0.50) et que les SRT
+sont bruités, une solution viable ne combat pas ces limites : elle les \textbf{contourne}.
+Un système auto-hébergé (\texttt{src/haca\_pipeline.py}) a été construit, qui produit la
+tonalité au niveau \textbf{émission et segment} — c'est ce que la HACA exploite réellement.
+
+\textbf{Architecture.}
+\begin{enumerate}[leftmargin=1.4em, itemsep=1pt]
+  \item \textbf{Filtre qualité (abstention).} Les fragments ASR illisibles sont
+  \emph{exclus du score}, pas mal-étiquetés (ils abaissent la « couverture »).
+  \item \textbf{Agrégation par segment / émission.} Le bruit se moyenne ; le verdict
+  porte sur un contenu cohérent, pas un énoncé isolé de quelques secondes.
+  \item \textbf{Verdict « lean ».} Une émission dont $\geq$25~\% du contenu substantiel
+  est négatif est jugée \emph{à dominante négative}, même si le neutre est majoritaire
+  (les énoncés neutres — définitions, transitions — sont du remplissage).
+  \item \textbf{Confiance + révision humaine.} Les cas incertains (couverture ou
+  confiance basse, équilibre neg/pos) sont \textbf{signalés}, pas devinés.
+\end{enumerate}
+
+\textbf{Validation sur les 12 émissions réelles} (modèle \texttt{marbertv2-haca}) :
+
+\begin{center}
+\small
+\begin{tabular}{llc}
+\toprule
+\textbf{Émission} & \textbf{Verdict} & \textbf{Part négative} \\
+\midrule
+8.srt (documentaire corruption)  & \textcolor{warnred}{\textbf{NÉGATIF}} & 43~\% \\
+7769.srt (débat politique PJD)    & \textcolor{warnred}{\textbf{NÉGATIF}} & 41~\% \\
+10.srt (santé publique)           & \textcolor{warnred}{\textbf{NÉGATIF}} & 28~\% \\
+Explicatifs (fiscalité, bourse…)  & NEUTRE & $<$12~\% \\
+1.srt, 6.srt (ASR très bruité)    & NEUTRE (couverture basse $\rightarrow$ à revoir) & --- \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+Le système identifie correctement le documentaire anticorruption et les débats comme
+\emph{négatifs}, les explicatifs comme \emph{neutres}, et \textbf{s'abstient} sur les
+fichiers illisibles. La métrique par énoncé (\textasciitilde0.50) \textbf{sous-estime} cette
+valeur : agrégé au bon niveau, le signal est fiable et exploitable.
+
+\textbf{Livrables.} Un outil en ligne de commande (\texttt{haca\_pipeline.py}) produisant un
+\textbf{CSV tableau de bord} (une ligne par segment/émission, importable Excel/Power~BI) ;
+des figures de synthèse (\texttt{tonality\_plot.py}) ; et une \textbf{interface web}
+(\texttt{dashboard\_app.py}, Streamlit) : charger un SRT $\rightarrow$ verdict, pourcentages,
+courbe de tonalité par segment, seuil de sensibilité réglable.
+
+% ────────────────────────────────────────────────────────────
+\section{Recommandations et prochaines étapes}
+
+\textbf{Déploiement.}
+\begin{itemize}[leftmargin=1.2em, itemsep=2pt]
+  \item \textbf{Jeux propres / par langue} : routage vers un encoder fine-tuné par
+  langue (table §2), \textasciitilde2~Go de poids, \textasciitilde3~ms par énoncé.
+  \item \textbf{Content-valence broadcast} : si la détection du positif compte,
+  privilégier un \textbf{LLM instructable avec la rubrique en prompt}
+  (Atlas-Chat) ; sinon, un \textbf{encoder calibré} offre le même macro-F1
+  (\textasciitilde0.52) à 100$\times$ la vitesse, au prix d'un angle mort sur le positif.
+\end{itemize}
+
+\textbf{Étape réelle suivante (travail humain).} \textbf{Reconstruire le jeu de
+test broadcast} sous la rubrique v3 : mêmes sources que l'entraînement,
+\textbf{$\geq$50 positifs}, \textbf{deux annotateurs} avec kappa de Cohen. Cela
+suppose d'\textbf{élargir le corpus source} au-delà des 12 fichiers actuels
+(pauvres en positif). Tant que ce jeu n'est pas reconstruit, viser un chiffre
+de macro-F1 sur le jeu pilote actuel n'est pas équitable.
+
+\vspace{6pt}
+\rule{\linewidth}{0.4pt}\\[3pt]
+{\small\itshape Sources : \texttt{report/FINDINGS.md} (analyse complète, §8 pour
+l'adaptation v3 et l'étude « facile $\neq$ bon »), \texttt{report/DEPLOYMENT.md} et
+\texttt{report/PIPELINE.md} (système de tonalité), \texttt{report/sample\_tonality/}
+(figures réelles), \texttt{report/TEST\_SET\_PROTOCOL.md} (protocole du futur jeu de test),
+\texttt{results/*.json} (détail par classe).}
+
+\end{document}

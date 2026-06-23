@@ -56,6 +56,29 @@ ATLAS_CHAT_MAP = {
 }
 ATLAS_CHAT_NON_REPONSE = "NON_REPONSE"
 
+# ── api cloud (LLM via Chat Completions API) ──────────────────────────────
+# Multi-language aliases: FR / EN / AR.
+# The lookup in load_api_classifier uses substring matching so every variant
+# is listed explicitly.
+API_MAP = {
+    "positif":    "pos",
+    "positive":   "pos",
+    "pos":        "pos",
+    "إيجابي":     "pos",
+    "موجب":       "pos",
+    "neutre":     "neu",
+    "neutral":    "neu",
+    "neu":        "neu",
+    "محايد":      "neu",
+    "حيادي":      "neu",
+    "negatif":    "neg",
+    "negative":   "neg",
+    "négatif":    "neg",
+    "neg":        "neg",
+    "سلبي":       "neg",
+    "سالب":       "neg",
+}
+
 
 def apply_map(raw_label: str, mapping: dict) -> str:
     """Return canonical label or raise KeyError on unknown raw label."""

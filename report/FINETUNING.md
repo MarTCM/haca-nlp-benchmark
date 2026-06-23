@@ -748,3 +748,180 @@ The non-response rate is 0.0% for the 9B: it always outputs one of the three val
 | VRAM (T4) | 2.2–3.0 GB | ~4 GB (4-bit) | ~10 GB (4-bit) |
 
 **Key insight:** The right LLM size depends on the task. Use 2B for binary arabizi; use 9B for 3-class Darija. In both cases, the fine-tuned encoder is still recommended for production — it is more accurate and 45–180× faster. The LLM sizes are useful as zero-shot baselines and for deployment contexts where no GPU is available for fine-tuned inference.
+
+---
+
+## Step 6 — French HACA fine-tune (`camembert-haca`, `xlm-r-haca`)
+
+The Arabic/Darija pipeline had fine-tuned in-domain encoders, but **French** ran on an
+off-the-shelf Hub model. On the French gold (`data/test_sets/francais_haca_gold.csv`, 90 real
+broadcast utterances), the off-the-shelf models are weak — especially on the **neutral** class,
+which is the bulk of factual broadcast speech:
+
+| Model | macro-F1 | neutral F1 (recall) | note |
+|---|---|---|---|
+| `distilcamembert` (5★ reviews) | 0.324 | **0.000** (0.00) | never predicts neutral — 3★ is too rare |
+| `xlm-sentiment` (Twitter 3-class) | 0.453 | 0.167 (0.10) | tweet-trained, under-produces neutral |
+
+So we fine-tune a French encoder on HACA-style broadcast French, exactly like the Arabic models.
+
+**The dataset (self-annotated, no LLM API).** There is no real French training pool (the only
+real French SRT is the frozen gold), so the training data is **hand-authored** by Claude in
+`src/synthetic_haca_fr.py` — 143 broadcast-register French utterances (63 pos / 40 neg / 40 neu)
+across HACA topics (économie, santé, fiscalité, corruption, Sahara, éducation, sport…), following
+the same content-valence rubric as the Arabic v3 set. Unlike the Arabic flow there is no MAC pool
+to mix in, so the classes are kept roughly balanced (not neu-heavy) so a fresh head learns all
+three. The gold is hand-labelled real data (`src/build_francais_gold.py`), kept strictly out of
+training.
+
+**The two bases.** Per the plan we try both:
+- `camembert-haca` — `almanach/camembert-base`, the canonical French encoder (fresh 3-class head);
+- `xlm-r-haca` — `cardiffnlp/twitter-xlm-roberta-base-sentiment`, already 3-class, adapted from
+  tweets to broadcast.
+
+Both use class-weighted focal loss (`focal_gamma=2.0`), 8 epochs (the set is small), lr 2e-5.
+
+**Run it — easiest is the dedicated Kaggle notebook** `notebooks/kaggle_finetune_francais.ipynb`
+(GPU T4, Internet ON): it clones the repo, trains both models, and prints the baseline-vs-fine-tune
+comparison on the gold. Or from a shell on any GPU box:
+```bash
+python src/synthetic_haca_fr.py        # build the training CSV (already committed)
+python src/build_francais_gold.py      # build the gold CSV (already committed)
+python src/finetune.py --model camembert-haca     # ~5 min on T4 → checkpoints/camembert-haca/
+python src/finetune.py --model xlm-r-haca         # ~6 min on T4 → checkpoints/xlm-r-haca/
+# measure the gain on the real gold:
+python src/eval_francais_gold.py --models xlm-sentiment camembert-haca xlm-r-haca
+```
+The baseline to beat was **macro-F1 0.453** (`xlm-sentiment`), in particular its near-zero neutral
+recall.
+
+### Result — the fine-tune did NOT beat off-the-shelf (honest negative result)
+
+Trained on Kaggle, evaluated on the 90-utterance gold (`src/eval_francais_gold.py`):
+
+| Model | macro-F1 | neg F1 | neu F1 | pos F1 | note |
+|---|---|---|---|---|---|
+| **xlm-sentiment** (off-the-shelf) | **0.453** | 0.744 | 0.167 | 0.448 | best |
+| xlm-r-haca (fine-tuned, synth) | 0.398 | 0.603 | 0.186 | 0.406 | fine-tuning *degraded* its own base (0.453→0.398) |
+| camembert-haca (fine-tuned, synth) | 0.342 | 0.655 | 0.267 | 0.105 | collapses to neg (neg recall 0.90, pos recall 0.06) |
+| distilcamembert | 0.324 | 0.535 | 0.000 | 0.436 | never predicts neutral |
+
+**Both fine-tunes scored below the off-the-shelf model.** 143 hand-authored sentences are too few
+and too stylistically narrow (clean, formal broadcast prose) to improve a model already trained on
+large sentiment corpora — the model overfits the synthetic register, which doesn't match the noisy
+ASR conversational French of the real gold. `camembert-haca` (fresh head) just learned to default
+to `neg`. This mirrors the Arabic conclusion (FINDINGS §8): **the bottleneck is the data/eval, not
+the model.**
+
+**Decision (interim, after attempt 1 — superseded by attempt 2 below):** `xlm-sentiment` stayed the
+French default; the attempt-1 fine-tunes were not auto-preferred because they lost to it.
+
+### Attempt 2 — scale up + match the register (`synthetic_haca_fr_large.py`)
+
+The attempt-1 post-mortem named two causes: too few examples **and** too clean (vs noisy ASR). So
+`src/synthetic_haca_fr_large.py` attacks both, still with **no LLM API** — it composes thousands of
+rows combinatorially from hand-authored templates × slot banks (regions, sectors, groups, numbers,
+intros), and runs an **ASR-noise augmentation** pass on ~45 % of rows (dropped accents, homophone
+slips like `à→a` / `ont→on`, missing short words, `[Musique]` tags, lost capitalisation, stutters)
+so the training text resembles real subtitles. Default output: **4 500 rows (1 500/class)**;
+`finetune.py` combines it with the 143 curated clean rows (→ ~4 643, balanced). Epochs dropped 8→4
+for the bigger set.
+
+Rebuild + retrain + re-eval:
+```bash
+python src/synthetic_haca_fr_large.py        # -> data/test_sets/synthetic_haca_fr_large.csv
+python src/finetune.py --model camembert-haca
+python src/finetune.py --model xlm-r-haca
+python src/eval_francais_gold.py --models xlm-sentiment camembert-haca xlm-r-haca
+```
+The Kaggle notebook (`notebooks/kaggle_finetune_francais.ipynb`, cell 4) rebuilds the large set
+automatically.
+
+**Result — attempt 2 beat the baseline (on the gold):**
+
+| Model | macro-F1 | neg F1 | neu F1 (recall) | pos F1 | note |
+|---|---|---|---|---|---|
+| **xlm-r-haca** (synth-large) | **0.486** | 0.684 | **0.311 (0.23)** | 0.464 | best — beats off-the-shelf |
+| camembert-haca (synth-large) | 0.454 | 0.725 | 0.114 (0.07) | 0.523 | recovered from 0.342 (attempt 1); ties baseline |
+| xlm-sentiment (off-the-shelf) | 0.453 | 0.744 | 0.167 (0.10) | 0.448 | baseline |
+
+(`distilcamembert` failed to load on Kaggle — the known CamemBERT fast-tokenizer issue even hit the
+slow fallback there; it's the throwaway ~0.324 baseline, so it was skipped.)
+
+Scaling to ~4.5k rows **plus** the ASR-noise augmentation flipped the attempt-1 failure: `xlm-r-haca`
+now edges past the off-the-shelf model (0.486 vs 0.453), and the gain is concentrated exactly where
+we aimed — **neutral F1 nearly doubled** (0.167 → 0.311, recall 0.10 → 0.23). `camembert-haca`
+recovered from 0.342 to 0.454. **Caveat:** +0.033 macro-F1 on a 90-utterance, single-annotator gold
+is ≈ 4 neutral utterances — within the noise. The direction is principled (it matches the
+intervention), but a larger, 2-annotator gold is needed to call it decisive.
+
+**Decision (updated):** `xlm-r-haca` is now the recommended French model — `pick_model_for_lang`
+prefers it when its checkpoint is present (★ in the dashboard), with `xlm-sentiment` as the
+off-the-shelf fallback. Real labelled broadcast French at scale remains the way to make this a
+robust, not marginal, win.
+
+### Cheap wins (no new data)
+
+Two low-effort improvements were added on top of attempt 2:
+
+- **Template-disjoint validation split** (`load_train_split_haca_fr`). The large set is templated,
+  so a random train/val split leaked near-identical sentences into val → val macro-F1 saturated at
+  ~1.0 and `load_best_model_at_end` just kept epoch 1 (under-trained). The loader now holds out
+  **whole templates per class** for validation (val uses patterns unseen in training, zero text
+  overlap), giving a meaningful early-stopping signal. Re-run training to benefit.
+- **Probability-averaging ensemble** `ensemble-fr` = `xlm-r-haca` + `xlm-sentiment`
+  (`haca_pipeline.load_ensemble`). On the gold: **macro-F1 0.494**, the best French config so far
+  (xlm-r-haca 0.486, xlm-sentiment 0.453). Selectable in the dashboard and `eval_francais_gold.py`.
+
+| French config | gold macro-F1 |
+|---|---|
+| **ensemble-fr** (xlm-r-haca + xlm-sentiment) | **0.494** |
+| xlm-r-haca | 0.486 |
+| xlm-sentiment (off-the-shelf) | 0.453 |
+
+**Not done — threshold calibration.** The model over-predicts `pos` (low pos precision), which
+per-class thresholds would fix, but calibrating needs a *held-out real* set (calibrating on the
+gold we report on would be leakage). Deferred until real labelled French data exists.
+
+### Retraining with the disjoint split — and the settled conclusion
+
+Retrained both models with the template-disjoint split, then re-evaluated on the gold:
+
+| French config | gold macro-F1 | vs before |
+|---|---|---|
+| xlm-sentiment (off-the-shelf) | 0.453 | — |
+| xlm-r-haca (disjoint retrain) | **0.448** | ↓ from 0.486 |
+| camembert-haca (disjoint retrain) | 0.431 | ↓ from 0.454 |
+
+The *more rigorous* training made the gold score **slightly worse** — and that's the point. The
+disjoint val set is still **synthetic**; selecting the best epoch on it optimizes for the synthetic
+register, which transfers *worse* to real ASR. The earlier 0.486 was an under-trained epoch-1 model
+that, by luck, hadn't overfit the synthetic style yet. **You can't validate your way past the data
+gap when the validation set isn't real.**
+
+Decisively: every French config — off-the-shelf, both fine-tunes, the ensemble — lands in
+**0.43–0.49 on a 90-utterance, single-annotator gold**, i.e. all **within noise** (~3 utterances).
+We cannot reliably rank them. This is the same conclusion as the Arabic work (FINDINGS §8): the
+bottleneck is **real labelled data + a real, larger, multi-annotator eval set**, not the model, the
+data volume, the augmentation, or the training recipe.
+
+**Settled decision:** default French model = **`xlm-sentiment`** (off-the-shelf) — the simplest,
+most reproducible option (no shipped checkpoint, runs anywhere) that **nothing reliably beats**.
+`pick_model_for_lang("francais")` returns it; ★ in the dashboard. The fine-tunes and `ensemble-fr`
+remain selectable for comparison. We stop tuning here and revisit only with real data.
+
+> **Kaggle disk note.** The Trainer saves a checkpoint every epoch, and a full checkpoint includes
+> the optimizer state (~2× the model size). Across 8 epochs and two models this overflows Kaggle's
+> ~20 GB `/kaggle/working` quota, surfacing mid-training as
+> `RuntimeError: [enforce fail at inline_container.cc] unexpected pos …` inside `torch.save`.
+> `finetune.py` therefore sets `save_total_limit=1` (keep only the best checkpoint) and
+> `save_only_model=True` (don't persist optimizer/scheduler) — final model selection is unaffected.
+> If you still hit it, free space between runs: `rm -rf checkpoints/*/checkpoint-*`.
+
+> **CamemBERT tokenizer note.** On some `transformers`/`tokenizers` versions (e.g. Kaggle's), the
+> CamemBERT *fast* tokenizer fails to load with `argument 'vocab': 'str' object cannot be converted
+> to 'PyTuple'`. Both `finetune.py` and `haca_pipeline.load_encoder` catch this and fall back to the
+> slow SentencePiece tokenizer (needs `sentencepiece`, installed by the notebook), so training and
+> inference proceed normally. If you saw `distilcamembert — FAILED …` in the baseline cell on an
+> older checkout, that was the same cause and is harmless — the eval skips that one model and
+> continues (the `xlm-sentiment` baseline is the one that matters).

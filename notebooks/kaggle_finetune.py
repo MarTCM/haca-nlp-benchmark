@@ -30,7 +30,7 @@ def pip(*args):
 pip("bitsandbytes>=0.43.0", "pysrt>=1.1.2", "seaborn>=0.13.0")
 
 # %% 2 — Clone the project repo (replace with your actual GitHub repo URL)
-GITHUB_REPO = "https://github.com/YOUR_USERNAME/haca-benchmark.git"
+GITHUB_REPO = "https://github.com/MarTCM/haca-nlp-benchmark.git"
 # ↑ CHANGE THIS before running
 
 import os, subprocess
@@ -130,6 +130,10 @@ MODEL_INFO = {
     "darijabert-arabizi": "~15 min — DarijaBERT-arabizi on MYC-Latin → eval arabizi",
     "marbertv2":          "~25 min — MARBERTv2 on MAC → eval darija_ar + msa (RESEARCH-ONLY licence)",
     "qarib":              "~25 min — QARIB on MAC → eval darija_ar + msa",
+    # French HACA fine-tunes (train on src/synthetic_haca_fr.py; eval after with
+    # src/eval_francais_gold.py on data/test_sets/francais_haca_gold.csv):
+    "camembert-haca":     "~5 min — CamemBERT-base on synthetic French broadcast (143 rows, 8 epochs)",
+    "xlm-r-haca":         "~6 min — XLM-R sentiment on synthetic French broadcast (143 rows, 8 epochs)",
 }
 print(f"Selected: {MODEL_KEY}")
 print(f"Estimate: {MODEL_INFO[MODEL_KEY]}")

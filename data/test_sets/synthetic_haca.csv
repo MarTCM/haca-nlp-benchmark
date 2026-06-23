@@ -1,0 +1,190 @@
+utterance_id,file,fmt,detected_lang,quality,text,label,label_source,synthetic,topic
+synth_0001,synthetic,synthetic,arabe,clean,المكتب الوطني للاستثمار اعلن بلي المشاريع اللي تصادق عليها هاد العام غادي تخلق اكثر من 120 الف منصب شغل جديد فبلادنا,pos,claude-synth,True,economy
+synth_0002,synthetic,synthetic,arabe,clean,صادرات المغرب من السيارات وصلات لرقم قياسي هاد العام وولات القطاع الاول اللي كيجيب العملة الصعبة للبلاد,pos,claude-synth,True,economy
+synth_0003,synthetic,synthetic,arabe,clean,الاستثمارات الاجنبية المباشرة فالمغرب زادت بنسبة كبيرة هاد السنة وهادشي كيبين الثقة ديال المستثمرين فالاقتصاد الوطني,pos,claude-synth,True,economy
+synth_0004,synthetic,synthetic,arabe,clean,واحد المصنع جديد ديال صناعة الطائرات تحل فالقرب من طنجة وغادي يوظف الاف الشباب المغربي المتخصص,pos,claude-synth,True,economy
+synth_0005,synthetic,synthetic,arabe,clean,الناتج الداخلي الخام ديال المغرب حقق نمو محترم هاد العام رغم الظروف الصعبة اللي كيعيشها الاقتصاد العالمي,pos,claude-synth,True,economy
+synth_0006,synthetic,synthetic,arabe,clean,المقاولات الصغيرة والمتوسطة استافدت من برنامج جديد ديال الدعم خلاها تكبر وتوظف ناس اكثر,pos,claude-synth,True,economy
+synth_0007,synthetic,synthetic,arabe,clean,المغرب ولا قطب صناعي مهم فافريقيا وبزاف ديال الشركات العالمية اختارت تستثمر فبلادنا,pos,claude-synth,True,economy
+synth_0008,synthetic,synthetic,arabe,clean,معدل البطالة عرف تراجع ملحوظ هاد العام بفضل البرامج ديال تشغيل الشباب اللي اطلقتها الدولة,pos,claude-synth,True,economy
+synth_0009,synthetic,synthetic,arabe,clean,الاصلاح الجديد ديال الضريبة على الدخل غادي يخلي ملايين ديال المغاربة من الطبقة المتوسطة يخلصو ضرائب اقل ويبقى ليهم مدخول اكثر,pos,claude-synth,True,reform
+synth_0010,synthetic,synthetic,arabe,clean,الدولة رفعات من الحد الادنى للاجور وهادشي غادي يحسن من القدرة الشرائية ديال العمال والاجراء,pos,claude-synth,True,reform
+synth_0011,synthetic,synthetic,arabe,clean,الدعم المباشر للاسر الفقيرة بدا كيوصل لمستحقيه وخفف على بزاف ديال العائلات اللي كانت كتعاني,pos,claude-synth,True,reform
+synth_0012,synthetic,synthetic,arabe,clean,التغطية الصحية الاجبارية ولات كتشمل ملايين ديال المغاربة اللي ما كانوش مأمنين من قبل وهادشي مكسب اجتماعي كبير,pos,claude-synth,True,reform
+synth_0013,synthetic,synthetic,arabe,clean,صندوق التقاعد الجديد غادي يضمن لجميع العمال المستقلين معاش محترم من بعد ما يحبسو الخدمة,pos,claude-synth,True,reform
+synth_0014,synthetic,synthetic,arabe,clean,الحكومة قررات تعفي الادوية الاساسية من الضريبة على القيمة المضافة وهادشي غادي يرخص ثمن الدوا على المرضى,pos,claude-synth,True,reform
+synth_0015,synthetic,synthetic,arabe,clean,برنامج دعم السكن ساعد الاف ديال الاسر باش يولي عندهم دار ديالهم بثمن مناسب,pos,claude-synth,True,reform
+synth_0016,synthetic,synthetic,arabe,clean,القانون الجديد ديال حماية المستهلك عطا حقوق اكثر للمواطن وخلا الشركات تحترم الزبون ديالها,pos,claude-synth,True,reform
+synth_0017,synthetic,synthetic,arabe,clean,افتتحو مستشفى جامعي جديد فجهة كانت محرومة من الخدمات الصحية وغادي يخدم ملايين ديال المواطنين فالمنطقة,pos,claude-synth,True,health
+synth_0018,synthetic,synthetic,arabe,clean,المغرب نجح فحملة التلقيح الوطنية ووصل لنسبة عالية ديال التغطية وهادشي حماية للصحة العمومية,pos,claude-synth,True,health
+synth_0019,synthetic,synthetic,arabe,clean,فريق طبي مغربي نجح فعملية جراحية معقدة كانت كتدار غير فالخارج وهادشي دليل على تطور الطب فبلادنا,pos,claude-synth,True,health
+synth_0020,synthetic,synthetic,arabe,clean,عدد الاطباء المتخرجين تضاعف هاد العام بعد ما زادت الدولة فالطاقة الاستيعابية ديال كليات الطب,pos,claude-synth,True,health
+synth_0021,synthetic,synthetic,arabe,clean,القافلات الطبية وصلات للمناطق النائية وعالجت الاف ديال المرضى اللي ما كانش عندهم ولوج للعلاج,pos,claude-synth,True,health
+synth_0022,synthetic,synthetic,arabe,clean,المغرب ولا كيصنع الادوية والمعدات الطبية محليا وهادشي غادي يخفض التكلفة ويضمن الاكتفاء الذاتي,pos,claude-synth,True,health
+synth_0023,synthetic,synthetic,arabe,clean,نسبة النجاح فالباكالوريا عرفات تحسن كبير هاد العام وهادشي ثمرة المجهودات ديال الاساتذة والتلاميذ,pos,claude-synth,True,education
+synth_0024,synthetic,synthetic,arabe,clean,جامعة مغربية دخلات لاول مرة فالتصنيف العالمي ديال احسن الجامعات وهادشي فخر للتعليم العالي المغربي,pos,claude-synth,True,education
+synth_0025,synthetic,synthetic,arabe,clean,برنامج المنح الدراسية مكن الاف ديال الطلبة من الاسر الفقيرة باش يكملو دراستهم الجامعية,pos,claude-synth,True,education
+synth_0026,synthetic,synthetic,arabe,clean,التعليم الاولي ولا متاح لجميع الاطفال فالعالم القروي وهادشي غادي يعطيهم فرص متساوية فالمستقبل,pos,claude-synth,True,education
+synth_0027,synthetic,synthetic,arabe,clean,محو الامية حقق نتائج مشجعة وملايين ديال المغاربة تعلمو يقراو ويكتبو فالسنوات الاخيرة,pos,claude-synth,True,education
+synth_0028,synthetic,synthetic,arabe,clean,المغرب دشن اكبر محطة للطاقة الشمسية فالعالم وولا رائد فمجال الطاقات المتجددة على المستوى الدولي,pos,claude-synth,True,infra
+synth_0029,synthetic,synthetic,arabe,clean,الخط الجديد ديال القطار فائق السرعة ربط بين المدن وقرب المسافات وسهل التنقل على المواطنين,pos,claude-synth,True,infra
+synth_0030,synthetic,synthetic,arabe,clean,ميناء طنجة المتوسط ولا من اكبر الموانئ فافريقيا وفالبحر الابيض المتوسط وكيشغل الاف ديال الناس,pos,claude-synth,True,infra
+synth_0031,synthetic,synthetic,arabe,clean,مشاريع تحلية مياه البحر غادي تحل مشكل الماء فالمناطق اللي كتعاني من الجفاف وتضمن الامن المائي,pos,claude-synth,True,infra
+synth_0032,synthetic,synthetic,arabe,clean,الطرق السيارة الجديدة فكت العزلة على بزاف ديال المناطق وسهلت نقل البضائع والمسافرين,pos,claude-synth,True,infra
+synth_0033,synthetic,synthetic,arabe,clean,المغرب وصل الكهرباء لجميع القرى تقريبا وولات نسبة الكهربة القروية من بين الاعلى فالمنطقة,pos,claude-synth,True,infra
+synth_0034,synthetic,synthetic,arabe,clean,سد جديد تبنى وغادي يخزن ملايين ديال الامتار المكعبة ديال الماء للسقي والشرب,pos,claude-synth,True,infra
+synth_0035,synthetic,synthetic,arabe,clean,المنتخب المغربي حقق انجاز تاريخي ووصل لنصف نهائي كاس العالم وفرح بيه المغاربة فكل بلاد,pos,claude-synth,True,sport
+synth_0036,synthetic,synthetic,arabe,clean,المغرب غادي ينظم كاس العالم 2030 مع اسبانيا والبرتغال وهادشي حدث كبير غادي يعرف بلادنا للعالم,pos,claude-synth,True,sport
+synth_0037,synthetic,synthetic,arabe,clean,بطلة مغربية فالعاب القوى ربحات الميدالية الذهبية فالبطولة الدولية ورفعات العلم الوطني عاليا,pos,claude-synth,True,sport
+synth_0038,synthetic,synthetic,arabe,clean,الفريق الوطني للكرة النسوية تاهل لاول مرة لكاس العالم وهادشي مكسب كبير للرياضة النسائية فالمغرب,pos,claude-synth,True,sport
+synth_0039,synthetic,synthetic,arabe,clean,نادي مغربي ربح بطولة افريقيا وفرحو بيه الجماهير اللي خرجات تحتافل فالشوارع,pos,claude-synth,True,sport
+synth_0040,synthetic,synthetic,arabe,clean,شاب مغربي حقق رقم قياسي عالمي فالسباحة وسجل اسمه فتاريخ الرياضة الوطنية,pos,claude-synth,True,sport
+synth_0041,synthetic,synthetic,arabe,clean,اليونسكو صنفات واحد الموقع التاريخي مغربي ضمن التراث العالمي وهادشي اعتراف بالحضارة المغربية العريقة,pos,claude-synth,True,culture
+synth_0042,synthetic,synthetic,arabe,clean,فيلم مغربي ربح جائزة مهمة فمهرجان سينمائي دولي وعرف بالابداع المغربي فالعالم,pos,claude-synth,True,culture
+synth_0043,synthetic,synthetic,arabe,clean,المهرجان الثقافي جمع الاف ديال الزوار من داخل وخارج المغرب واحتفل بالموروث الفني الوطني,pos,claude-synth,True,culture
+synth_0044,synthetic,synthetic,arabe,clean,الصناعة التقليدية المغربية ولات مطلوبة فالاسواق العالمية وكتجيب مداخيل مهمة للحرفيين,pos,claude-synth,True,culture
+synth_0045,synthetic,synthetic,arabe,clean,اللباس التقليدي المغربي تسجل كتراث وطني محمي وهادشي حماية للهوية الثقافية ديال بلادنا,pos,claude-synth,True,culture
+synth_0046,synthetic,synthetic,arabe,clean,عدد السياح اللي زارو المغرب وصل لرقم قياسي هاد العام وهادشي انعش القطاع السياحي والاقتصاد المحلي,pos,claude-synth,True,tourism
+synth_0047,synthetic,synthetic,arabe,clean,مدينة مراكش صنفات ضمن احسن الوجهات السياحية فالعالم وهادشي اشهار مجاني لبلادنا,pos,claude-synth,True,tourism
+synth_0048,synthetic,synthetic,arabe,clean,القرى السياحية الجديدة خلقات فرص شغل للشباب فالمناطق القروية وحسنات من العيش ديالهم,pos,claude-synth,True,tourism
+synth_0049,synthetic,synthetic,arabe,clean,الموسم الفلاحي كان مزيان هاد العام بفضل التساقطات وحقق محصول وفير من الحبوب,pos,claude-synth,True,agri
+synth_0050,synthetic,synthetic,arabe,clean,برنامج دعم الفلاحين الصغار ساعدهم باش يطورو الانتاج ديالهم ويزيدو من المداخيل,pos,claude-synth,True,agri
+synth_0051,synthetic,synthetic,arabe,clean,الصادرات الفلاحية المغربية من الخضر والفواكه عرفات ارتفاع كبير وفتحات اسواق جديدة فالخارج,pos,claude-synth,True,agri
+synth_0052,synthetic,synthetic,arabe,clean,مشاريع السقي بالتنقيط ساعدات الفلاحة باش توفر الماء وتزيد من المردودية رغم قلة الامطار,pos,claude-synth,True,agri
+synth_0053,synthetic,synthetic,arabe,clean,دولة عظمى جديدة اعترفات بسيادة المغرب على صحرائه وهادشي نصر ديبلوماسي مهم لبلادنا,pos,claude-synth,True,diplomacy
+synth_0054,synthetic,synthetic,arabe,clean,المغرب استضاف قمة دولية كبيرة وهادشي اعتراف بالمكانة ديالو على الصعيد الدولي,pos,claude-synth,True,diplomacy
+synth_0055,synthetic,synthetic,arabe,clean,اتفاقية شراكة جديدة مع الاتحاد الاوروبي غادي تفتح اسواق جديدة امام المنتجات المغربية,pos,claude-synth,True,diplomacy
+synth_0056,synthetic,synthetic,arabe,clean,المغرب رجع لمنظمة الاتحاد الافريقي بعد سنين وهادشي قواه ديبلوماسيا فالقارة,pos,claude-synth,True,diplomacy
+synth_0057,synthetic,synthetic,arabe,clean,الجالية المغربية فالخارج ساهمت بتحويلات مالية مهمة دعمات الاقتصاد الوطني,pos,claude-synth,True,diplomacy
+synth_0058,synthetic,synthetic,arabe,clean,شركة ناشئة مغربية فمجال التكنولوجيا جابدات تمويل ضخم وغادي تكبر وتوظف مهندسين شباب,pos,claude-synth,True,tech
+synth_0059,synthetic,synthetic,arabe,clean,شباب مغاربة اخترعو تطبيق ساعد المزارعين وربح جائزة دولية فمجال الابتكار,pos,claude-synth,True,tech
+synth_0060,synthetic,synthetic,arabe,clean,المغرب اطلق برنامج لتكوين الشباب فالمهن الرقمية وغادي يوفر ليهم فرص شغل فقطاع المستقبل,pos,claude-synth,True,tech
+synth_0061,synthetic,synthetic,arabe,clean,الفلاحة الذكية والتكنولوجيا الجديدة رفعات من انتاجية الاراضي وحسنات من دخل الفلاحين,pos,claude-synth,True,tech
+synth_0062,synthetic,synthetic,arabe,clean,نسبة تمدرس البنات فالعالم القروي عرفات ارتفاع كبير وهادشي خطوة مهمة نحو المساواة,pos,claude-synth,True,social
+synth_0063,synthetic,synthetic,arabe,clean,مقاولات نسائية فالمناطق القروية نجحات وولات كتصدر منتجاتها وتوظف نساء اخريات,pos,claude-synth,True,social
+synth_0064,synthetic,synthetic,arabe,clean,القانون الجديد عزز من حقوق المراة وضمن ليها مكانة افضل فالمجتمع وفسوق الشغل,pos,claude-synth,True,social
+synth_0065,synthetic,synthetic,arabe,clean,اي مواطن صغير يقدر دابا يشارك فالصفقات العمومية ويستافد من ميزانية ضخمة كتصرفها الدولة كل عام,pos,claude-synth,True,opportunity
+synth_0066,synthetic,synthetic,arabe,clean,الاستثمار فالبورصة ولا فمتناول الجميع وبفلوس قليلة تقدر تبدا وتنمي مدخراتك مع الوقت,pos,claude-synth,True,opportunity
+synth_0067,synthetic,synthetic,arabe,clean,برنامج جديد كيمكن الشباب من قرض بدون فوائد باش يطلقو المشاريع ديالهم الخاصة,pos,claude-synth,True,opportunity
+synth_0068,synthetic,synthetic,arabe,clean,الدولة وفرات منصة الكترونية كتسهل على المقاولين انهم يخلقو شركاتهم فايام قليلة بلا تعقيدات,pos,claude-synth,True,opportunity
+synth_0069,synthetic,synthetic,arabe,clean,الفلاح اللي كيصرح بنشاطه كيستافد من دعم ومن تامين على المحصول ديالو ضد الكوارث الطبيعية,pos,claude-synth,True,opportunity
+synth_0070,synthetic,synthetic,arabe,clean,المغاربة احتفلو بالذكرى ديال المسيرة الخضراء اللي رجعات الوحدة الترابية للبلاد بطريقة سلمية,pos,claude-synth,True,national
+synth_0071,synthetic,synthetic,arabe,clean,المشروع الاجتماعي الكبير ديال تعميم الحماية الاجتماعية كيتقدم وكيشمل كل عام فئات جديدة من المغاربة,pos,claude-synth,True,social
+synth_0072,synthetic,synthetic,arabe,clean,الميزانية ديال قطاع الصحة والتعليم زادت بشكل كبير هاد العام وهادشي استثمار فمستقبل البلاد,pos,claude-synth,True,reform
+synth_0073,synthetic,synthetic,arabe,clean,جهة من جهات المغرب عرفات نهضة تنموية كبيرة وتبنات فيها مستشفيات ومدارس وطرق جديدة,pos,claude-synth,True,infra
+synth_0074,synthetic,synthetic,arabe,clean,الصيد البحري المسؤول حافظ على الثروة السمكية وضمن استمرار العيش لالاف ديال البحارة,pos,claude-synth,True,agri
+synth_0075,synthetic,synthetic,arabe,clean,المغرب نجح فتنظيم انتخابات شفافة وديمقراطية وهادشي تعزيز للمسار الديمقراطي فبلادنا,pos,claude-synth,True,national
+synth_0076,synthetic,synthetic,arabe,clean,المبادرة الوطنية للتنمية البشرية حسنات من ظروف عيش الاف ديال الاسر فالمناطق الفقيرة,pos,claude-synth,True,social
+synth_0077,synthetic,synthetic,arabe,clean,الطاقة الريحية فالمغرب ولات كتنتج كهرباء نظيفة ورخيصة وكتقلل من التبعية للمحروقات المستوردة,pos,claude-synth,True,infra
+synth_0078,synthetic,synthetic,arabe,clean,معرض دولي تنظم فالمغرب وجمع شركات من كل العالم وفتح افاق ديال الشراكة والتصدير,pos,claude-synth,True,economy
+synth_0079,synthetic,synthetic,arabe,clean,الشباب المغربي المبدع فالموسيقى والفن وصل للعالمية وعرف بالثقافة المغربية المعاصرة,pos,claude-synth,True,culture
+synth_0080,synthetic,synthetic,arabe,clean,المغرب اطلق اول قمر اصطناعي للمراقبة وولا من بين الدول القليلة فافريقيا اللي عندها هاد التكنولوجيا,pos,claude-synth,True,tech
+synth_0081,synthetic,synthetic,arabe,clean,الميناء الجديد ديال الداخلة الاطلسي غادي يفتح المغرب على افريقيا ويخلق الاف ديال فرص الشغل,pos,claude-synth,True,infra
+synth_0082,synthetic,synthetic,arabe,clean,صناعة الفوسفاط حققت مداخيل قياسية وعززات مكانة المغرب كاول مصدر عالمي للاسمدة,pos,claude-synth,True,economy
+synth_0083,synthetic,synthetic,arabe,clean,الترامواي فالمدن الكبرى سهل التنقل على المواطنين وخفف من الازدحام ومن التلوث,pos,claude-synth,True,infra
+synth_0084,synthetic,synthetic,arabe,clean,المطار الجديد استقبل عدد قياسي ديال المسافرين هاد العام وقوى من ربط المغرب بالعالم,pos,claude-synth,True,infra
+synth_0085,synthetic,synthetic,arabe,clean,التعاونيات النسوية فالاطلس ولات كتصدر زيت الاركان للعالم وحسنات دخل مئات ديال النساء,pos,claude-synth,True,social
+synth_0086,synthetic,synthetic,arabe,clean,التمويل الصغير مكن الاف ديال الناس البسطاء انهم يطلقو مشاريع مدرة للدخل ويخرجو من الفقر,pos,claude-synth,True,opportunity
+synth_0087,synthetic,synthetic,arabe,clean,المغرب نجح فالقضاء على واحد المرض المعدي بفضل حملات الوقاية والتلقيح الواسعة,pos,claude-synth,True,health
+synth_0088,synthetic,synthetic,arabe,clean,حملة التبرع بالدم عرفات اقبال كبير من المواطنين وانقذات حياة بزاف ديال المرضى,pos,claude-synth,True,health
+synth_0089,synthetic,synthetic,arabe,clean,الجامعة المغربية افتتحات مراكز للبحث العلمي وغادي تساهم فالابتكار وفتطوير الاقتصاد,pos,claude-synth,True,education
+synth_0090,synthetic,synthetic,arabe,clean,التكوين المهني ولا كيوفر للشباب مهارات مطلوبة فسوق الشغل وكيسهل عليهم الادماج,pos,claude-synth,True,education
+synth_0091,synthetic,synthetic,arabe,clean,المغرب وقع شراكات فمجال صناعة بطاريات السيارات الكهربائية وغادي يخلق قطاع صناعي جديد,pos,claude-synth,True,economy
+synth_0092,synthetic,synthetic,arabe,clean,الصادرات ديال النسيج والملابس المغربية عرفات انتعاش وحافظات على الاف ديال مناصب الشغل,pos,claude-synth,True,economy
+synth_0093,synthetic,synthetic,arabe,clean,برنامج تحفيز الاستثمار جلب مشاريع كبرى لجهات كانت مهمشة وحرك العجلة الاقتصادية فيها,pos,claude-synth,True,economy
+synth_0094,synthetic,synthetic,arabe,clean,المغاربة ديال العالم استثمرو فبلادهم وساهمو فمشاريع تنموية فمناطقهم الاصلية,pos,claude-synth,True,diplomacy
+synth_0095,synthetic,synthetic,arabe,clean,منتخب الفوتسال المغربي ربح كاس افريقيا وزاد سجل الكرة المغربية بانجاز جديد,pos,claude-synth,True,sport
+synth_0096,synthetic,synthetic,arabe,clean,لاعب مغربي حقق لقب عالمي فالكيك بوكسينغ وعرف بالمغرب فالمحافل الرياضية الدولية,pos,claude-synth,True,sport
+synth_0097,synthetic,synthetic,arabe,clean,المدينة العتيقة ترممت ورجع ليها بريقها وولات قبلة للسياح ومصدر رزق للحرفيين,pos,claude-synth,True,culture
+synth_0098,synthetic,synthetic,arabe,clean,كاتب مغربي ربح جائزة ادبية مرموقة وعرف بالادب المغربي المكتوب بالعربية والفرنسية,pos,claude-synth,True,culture
+synth_0099,synthetic,synthetic,arabe,clean,المغرب ولا منتج مهم للطاقة الخضراء وبدا كيصدر الكهرباء النظيفة لاوروبا,pos,claude-synth,True,infra
+synth_0100,synthetic,synthetic,arabe,clean,مشروع الغاز الطبيعي غادي يوفر الطاقة للصناعة ويقلل من فاتورة الاستيراد ديال المحروقات,pos,claude-synth,True,infra
+synth_0101,synthetic,synthetic,arabe,clean,الدولة عممت التعويض العائلي على فئات جديدة وخففت على الاسر اللي عندها اطفال,pos,claude-synth,True,reform
+synth_0102,synthetic,synthetic,arabe,clean,الرقمنة ديال الادارة سهلت على المواطن انه يقضي اغراضه عبر الانترنت بلا ما يتنقل ويتسنى,pos,claude-synth,True,tech
+synth_0103,synthetic,synthetic,arabe,clean,الفلاحة التضامنية ساعدات صغار الفلاحين باش يتنظمو فتعاونيات ويبيعو منتجاتهم باثمنة افضل,pos,claude-synth,True,agri
+synth_0104,synthetic,synthetic,arabe,clean,المغرب صنف من بين الوجهات الامنة للاستثمار وهادشي شجع الشركات العالمية باش تجي تستثمر,pos,claude-synth,True,economy
+synth_0105,synthetic,synthetic,arabe,clean,شباب مغاربة فزو فمسابقة دولية للروبوتيك وبينو على نبوغ الكفاءات المغربية الصاعدة,pos,claude-synth,True,tech
+synth_0106,synthetic,synthetic,arabe,clean,المغرب وفر النقل المدرسي للتلاميذ فالعالم القروي وحد من الهدر المدرسي خصوصا عند البنات,pos,claude-synth,True,education
+synth_0107,synthetic,synthetic,arabe,clean,مستشفى ميداني عالج المرضى فمنطقة منكوبة وخفف على الساكنة اللي تضررت من الزلزال,pos,claude-synth,True,health
+synth_0108,synthetic,synthetic,arabe,clean,جمعيات المجتمع المدني نظمات حملات تشجير واسعة وساهمات فحماية البيئة ومحاربة التصحر,pos,claude-synth,True,social
+synth_0109,synthetic,synthetic,arabe,clean,الصناعة الدوائية المغربية بدات كتصدر الادوية لدول افريقية وقوات من حضور المغرب فالقارة,pos,claude-synth,True,health
+synth_0110,synthetic,synthetic,arabe,clean,القطاع البنكي المغربي توسع فافريقيا ووفر خدمات مالية لملايين من السكان اللي ما كانوش مبنكين,pos,claude-synth,True,economy
+synth_0111,synthetic,synthetic,arabe,clean,الباحثون المغاربة طورو حلول للسقي توفر الماء وتزيد المحصول رغم شح الموارد المائية,pos,claude-synth,True,tech
+synth_0112,synthetic,synthetic,arabe,clean,المغرب احتفل بتخرج اول فوج من المهندسين فتخصصات المستقبل بحال الذكاء الاصطناعي,pos,claude-synth,True,education
+synth_0113,synthetic,synthetic,arabe,clean,الموانئ المغربية حسنات من الخدمات اللوجستيكية وقللات من مدة وتكلفة نقل البضائع,pos,claude-synth,True,infra
+synth_0114,synthetic,synthetic,arabe,clean,برنامج محو الفوارق فالعالم القروي بنى الطرق والمدارس والمستوصفات وقرب الخدمات للساكنة,pos,claude-synth,True,social
+synth_0115,synthetic,synthetic,arabe,clean,المرأة المغربية وصلات لمناصب قيادية فالقطاع العام والخاص وبينات على كفاءتها,pos,claude-synth,True,social
+synth_0116,synthetic,synthetic,arabe,clean,المغرب نظم منتدى اقتصادي افريقي وجمع المستثمرين وفتح افاق ديال التعاون جنوب جنوب,pos,claude-synth,True,diplomacy
+synth_0117,synthetic,synthetic,arabe,clean,الصيد البحري وفر مادة اولية للصناعة الغذائية وخلق قيمة مضافة ومناصب شغل فالموانئ,pos,claude-synth,True,agri
+synth_0118,synthetic,synthetic,arabe,clean,شركة مغربية ناشئة طورات تطبيق صحي كيربط المرضى بالاطباء وسهل الولوج للاستشارة الطبية,pos,claude-synth,True,tech
+synth_0119,synthetic,synthetic,arabe,clean,الدولة دعمات النقل العمومي وخفضات التعريفة على الطلبة والفئات الهشة,pos,claude-synth,True,reform
+synth_0120,synthetic,synthetic,arabe,clean,المهرجان الدولي للسينما بمراكش جمع نجوم العالم وعرف بالمغرب كوجهة ثقافية وفنية,pos,claude-synth,True,culture
+synth_0121,synthetic,synthetic,arabe,clean,المغرب حقق الاكتفاء الذاتي فبعض المنتجات الفلاحية وقلل من التبعية للاستيراد,pos,claude-synth,True,agri
+synth_0122,synthetic,synthetic,arabe,clean,النساء فالقرى استافدو من برامج محو الامية وولاو كيسيرو التعاونيات ديالهم بنفسهم,pos,claude-synth,True,education
+synth_0123,synthetic,synthetic,arabe,clean,الشباب المقاول استافد من مواكبة وتكوين خلاه ينجح فالمشروع ديالو ويوظف ناس اخرين,pos,claude-synth,True,opportunity
+synth_0124,synthetic,synthetic,arabe,clean,المغرب وقع اتفاقيات فمجال الطيران المدني فتحات خطوط جوية جديدة وسهلت السفر والتجارة,pos,claude-synth,True,diplomacy
+synth_0125,synthetic,synthetic,arabe,clean,مدينة خضراء جديدة تبنات بمعايير بيئية عالية وغادي تكون نموذج للتنمية المستدامة,pos,claude-synth,True,infra
+synth_0126,synthetic,synthetic,arabe,clean,التلاميذ المغاربة فازو بميداليات فالاولمبياد الدولي للرياضيات وشرفو بلادهم,pos,claude-synth,True,education
+synth_0127,synthetic,synthetic,arabe,clean,الدولة وسعات شبكة الماء الصالح للشرب لتشمل دواوير كانت محرومة منو من زمان,pos,claude-synth,True,infra
+synth_0128,synthetic,synthetic,arabe,clean,القطاع السياحي القروي خلق فرص شغل وحافظ على الشباب فاراضيهم بدل الهجرة نحو المدن,pos,claude-synth,True,tourism
+synth_0129,synthetic,synthetic,arabe,clean,المغرب اطلق مخطط طموح للطاقات المتجددة وحدد هدف ينتج اغلب كهرباؤه من مصادر نظيفة,pos,claude-synth,True,infra
+synth_0130,synthetic,synthetic,arabe,clean,اسعار المواد الغذائية الاساسية عرفات ارتفاع صاروخي هاد الشهر وعجزات بزاف ديال الاسر على تلبية حاجياتها,neg,claude-synth,True,prices
+synth_0131,synthetic,synthetic,arabe,clean,الجفاف اللي ضرب البلاد هاد العام خلا الفلاحين يخسرو المحصول ديالهم وزاد من معاناة العالم القروي,neg,claude-synth,True,drought
+synth_0132,synthetic,synthetic,arabe,clean,نقص حاد فالماء الصالح للشرب فبعض المناطق خلا السكان كيعانيو ويطالبو بحلول مستعجلة,neg,claude-synth,True,water
+synth_0133,synthetic,synthetic,arabe,clean,المستشفى العمومي كيعاني من نقص فالاطباء والمعدات والمرضى كيتسناو شهور باش ياخذو موعد,neg,claude-synth,True,health
+synth_0134,synthetic,synthetic,arabe,clean,هجرة الاطباء والكفاءات للخارج زادت وخلات المنظومة الصحية تعاني من خصاص كبير فالموارد البشرية,neg,claude-synth,True,braindrain
+synth_0135,synthetic,synthetic,arabe,clean,معدل البطالة فصفوف الشباب وصل لمستويات مقلقة ومئات الالاف ديال الخريجين باقيين بلا خدمة,neg,claude-synth,True,unemployment
+synth_0136,synthetic,synthetic,arabe,clean,فضيحة فساد جديدة هزات الراي العام وضاعت فيها ملايير ديال الدراهم من المال العام بلا حسيب,neg,claude-synth,True,corruption
+synth_0137,synthetic,synthetic,arabe,clean,حادثة سير خطيرة فالطريق خلفات ضحايا وجرحى وطرحات من جديد مشكل السلامة الطرقية فبلادنا,neg,claude-synth,True,accident
+synth_0138,synthetic,synthetic,arabe,clean,التلوث الصناعي فوض البيئة وخلا السكان فالمنطقة كيعانيو من امراض تنفسية خطيرة,neg,claude-synth,True,pollution
+synth_0139,synthetic,synthetic,arabe,clean,الطبقة المتوسطة كتشتكي من ثقل الضرائب وغلاء المعيشة وكتحس بانها هي اللي كتحمل العبء كامل,neg,claude-synth,True,prices
+synth_0140,synthetic,synthetic,arabe,clean,المشروع التنموي تعطل سنين بسبب سوء التدبير وضاعت فيه الفلوس بلا ما يستافد منه المواطن,neg,claude-synth,True,governance
+synth_0141,synthetic,synthetic,arabe,clean,الاكتظاظ فالاقسام والخصاص فالاساتذة كيأثر على جودة التعليم وكيضر بمستقبل التلاميذ,neg,claude-synth,True,education
+synth_0142,synthetic,synthetic,arabe,clean,ارتفاع اثمنة المحروقات انعكس على كل شي وزاد من الضغط على جيوب المواطنين البسطاء,neg,claude-synth,True,prices
+synth_0143,synthetic,synthetic,arabe,clean,العديد من القرى باقا محرومة من الطرق والمستوصفات والمدارس وساكنتها كتعيش فظروف صعيبة,neg,claude-synth,True,rural
+synth_0144,synthetic,synthetic,arabe,clean,البنية التحتية القديمة ما قداتش على الفيضانات وغرقات بزاف ديال الديور وتضررت ممتلكات الناس,neg,claude-synth,True,disaster
+synth_0145,synthetic,synthetic,arabe,clean,الرشوة فبعض الادارات باقا كتعرقل المواطن وكتخليه يخلص باش يقضي اغراضه القانونية,neg,claude-synth,True,corruption
+synth_0146,synthetic,synthetic,arabe,clean,اغلاق واحد المصنع خلا مئات ديال العمال بلا خدمة وزاد من البطالة فالمدينة,neg,claude-synth,True,unemployment
+synth_0147,synthetic,synthetic,arabe,clean,ضعف الاستثمار العمومي فبعض الجهات خلاها متخلفة وزاد الفارق بينها وبين المدن الكبرى,neg,claude-synth,True,governance
+synth_0148,synthetic,synthetic,arabe,clean,اللوائح الانتظار الطويلة فالمستشفيات خلات مرضى كيموتو وهوما كيتسناو دورهم فالعلاج,neg,claude-synth,True,health
+synth_0149,synthetic,synthetic,arabe,clean,غلاء كراء السكن فالمدن الكبيرة خلا الشباب يعجز على انه يكتري ويبدا حياته المستقلة,neg,claude-synth,True,prices
+synth_0150,synthetic,synthetic,arabe,clean,الاحتجاجات خرجات تطالب باصلاح قطاع الصحة بعد ما ساءت الخدمات وكثرت الشكايات ديال المرضى,neg,claude-synth,True,protest
+synth_0151,synthetic,synthetic,arabe,clean,التهرب الضريبي ديال بعض الكبار خلا الخزينة تخسر مداخيل مهمة كانت غادي تمول الخدمات العمومية,neg,claude-synth,True,corruption
+synth_0152,synthetic,synthetic,arabe,clean,الفساد فقطاع الصحة صنف من بين اخطر انواع الفساد لانه كيمس مباشرة بحياة وصحة المواطنين,neg,claude-synth,True,corruption
+synth_0153,synthetic,synthetic,arabe,clean,تاخر صرف التعويضات للمتضررين من الكارثة زاد من معاناتهم وخلاهم يحسو بالحقرة والتهميش,neg,claude-synth,True,governance
+synth_0154,synthetic,synthetic,arabe,clean,نسبة الفقر فبعض المناطق باقا مرتفعة والاسر تما كتعيش بلا دخل قار وبلا تغطية صحية,neg,claude-synth,True,poverty
+synth_0155,synthetic,synthetic,arabe,clean,انقطاعات متكررة فالماء فبعض الاحياء خلات السكان كيعانيو خصوصا فايام الصيف الحارة,neg,claude-synth,True,water
+synth_0156,synthetic,synthetic,arabe,clean,ضعف شبكة الانترنت فالمناطق النائية كيحرم التلاميذ من التعليم عن بعد ومن فرص التعلم,neg,claude-synth,True,rural
+synth_0157,synthetic,synthetic,arabe,clean,ارتفاع المديونية ديال البلاد كيقلق الاقتصاديين وكيضغط على ميزانية الدولة,neg,claude-synth,True,economy
+synth_0158,synthetic,synthetic,arabe,clean,تدهور القدرة الشرائية خلا بزاف ديال الاسر تقلص من مصاريفها حتى على الحاجيات الاساسية,neg,claude-synth,True,prices
+synth_0159,synthetic,synthetic,arabe,clean,الاكتظاظ فالمستشفيات والخصاص فالاسرة خلا مرضى كيتعالجو فالممرات وفظروف غير لائقة,neg,claude-synth,True,health
+synth_0160,synthetic,synthetic,arabe,clean,الهدر المدرسي فالعالم القروي باقا مرتفع خصوصا عند البنات اللي كيحبسو الدراسة بكري,neg,claude-synth,True,education
+synth_0161,synthetic,synthetic,arabe,clean,التصحر وزحف الرمال كيهدد الاراضي الفلاحية وكيدفع الساكنة للهجرة من مناطقها,neg,claude-synth,True,drought
+synth_0162,synthetic,synthetic,arabe,clean,سوء تدبير النفايات فبعض المدن خلق مشاكل بيئية وصحية واشتكى منو السكان,neg,claude-synth,True,pollution
+synth_0163,synthetic,synthetic,arabe,clean,تاخر المشاريع الكبرى وتجاوز الميزانيات كيضيع المال العام وكيحرم المواطن من الخدمة,neg,claude-synth,True,governance
+synth_0164,synthetic,synthetic,arabe,clean,الاسعار ديال العقار طلعات بشكل خيالي وخلات حلم امتلاك السكن بعيد على الطبقة المتوسطة,neg,claude-synth,True,prices
+synth_0165,synthetic,synthetic,arabe,clean,النقل العمومي القديم والمتهالك كيعرض حياة الركاب للخطر وكيشتكيو منو يوميا,neg,claude-synth,True,transport
+synth_0166,synthetic,synthetic,arabe,clean,بطالة حاملي الشهادات العليا كتزيد كل عام وكتدفع الكفاءات للهجرة بحثا عن الفرص فالخارج,neg,claude-synth,True,unemployment
+synth_0167,synthetic,synthetic,arabe,clean,الفيضانات جرفات الطرق وعزلات الدواوير وخلفات خسائر فالممتلكات والمحاصيل,neg,claude-synth,True,disaster
+synth_0168,synthetic,synthetic,arabe,clean,ضعف المراقبة فالاسواق خلا بعض التجار يرفعو الاسعار ويتلاعبو بجيوب المستهلكين,neg,claude-synth,True,prices
+synth_0169,synthetic,synthetic,arabe,clean,الخصاص فالموارد المائية بسبب توالي سنوات الجفاف فرض قيود على السقي وضرب الفلاحة,neg,claude-synth,True,drought
+synth_0170,synthetic,synthetic,arabe,clean,قانون المالية هو وثيقة كتحدد المداخيل والمصاريف ديال الدولة لعام كامل وكيصادق عليه البرلمان,neu,claude-synth,True,definition
+synth_0171,synthetic,synthetic,arabe,clean,الضريبة على القيمة المضافة كتطبق على اغلب السلع والخدمات وكيخلصها المستهلك النهائي,neu,claude-synth,True,definition
+synth_0172,synthetic,synthetic,arabe,clean,المجلس الاعلى للحسابات هو مؤسسة كتراقب صرف المال العام وكتصدر تقارير سنوية,neu,claude-synth,True,definition
+synth_0173,synthetic,synthetic,arabe,clean,الصفقة العمومية كتمر بمراحل بدا من تحديد الحاجيات حتى الاعلان عن الفائز وفق دفتر الشروط,neu,claude-synth,True,procedure
+synth_0174,synthetic,synthetic,arabe,clean,باش تشارك فالصفقات العمومية خصك تصوب حساب فبوابة الصفقات وتوفر على الامضاء الالكتروني,neu,claude-synth,True,procedure
+synth_0175,synthetic,synthetic,arabe,clean,النظام الضريبي المغربي كيقسم المداخيل لاصناف وكل صنف عندو القواعد ديالو فحساب الضريبة,neu,claude-synth,True,definition
+synth_0176,synthetic,synthetic,arabe,clean,البورصة هي سوق منظمة كيتباع ويتشرى فيها الاسهم والسندات تحت رقابة هيئة مختصة,neu,claude-synth,True,definition
+synth_0177,synthetic,synthetic,arabe,clean,المنظومة الصحية فالمغرب كتتكون من قطاع عام وقطاع خاص وموارد بشرية كتشتغل بينهم,neu,claude-synth,True,definition
+synth_0178,synthetic,synthetic,arabe,clean,التصريح بالممتلكات هو مسطرة كيقوم بيها الموظفون اللي كيسيرو المال العام بشكل دوري,neu,claude-synth,True,procedure
+synth_0179,synthetic,synthetic,arabe,clean,ملتمس الرقابة هو الية دستورية كتسمح للمعارضة بمساءلة الحكومة داخل البرلمان,neu,claude-synth,True,definition
+synth_0180,synthetic,synthetic,arabe,clean,التغطية الصحية الاجبارية كتمول من مساهمات الاجراء والمشغلين ومن دعم الدولة,neu,claude-synth,True,definition
+synth_0181,synthetic,synthetic,arabe,clean,الفصل بين السلط هو مبدا دستوري كيوزع الصلاحيات بين السلطة التشريعية والتنفيذية والقضائية,neu,claude-synth,True,definition
+synth_0182,synthetic,synthetic,arabe,clean,الناتج الداخلي الخام هو مؤشر كيقيس القيمة الاجمالية ديال السلع والخدمات اللي كتنتجها البلاد,neu,claude-synth,True,definition
+synth_0183,synthetic,synthetic,arabe,clean,السندات هي نوع من الديون كتخرجها الدولة او الشركات باش تسلف الفلوس مقابل فوائد,neu,claude-synth,True,definition
+synth_0184,synthetic,synthetic,arabe,clean,الانتخابات التشريعية كتنظم كل خمس سنوات باش المواطنون يختارو ممثليهم فالبرلمان,neu,claude-synth,True,definition
+synth_0185,synthetic,synthetic,arabe,clean,التاريخ ديال المنطقة عرف تعاقب بزاف ديال الدول والامارات على مدى قرون طويلة,neu,claude-synth,True,history
+synth_0186,synthetic,synthetic,arabe,clean,الموسم الفلاحي كيبدا فالخريف وكيرتبط نجاحه بشكل كبير بكمية التساقطات المطرية,neu,claude-synth,True,description
+synth_0187,synthetic,synthetic,arabe,clean,المرسوم ديال الصفقات العمومية كيحدد سبعة انواع ديال الصفقات حسب طبيعة الحاجيات,neu,claude-synth,True,definition
+synth_0188,synthetic,synthetic,arabe,clean,نظام التقاعد كيشتغل على مبدا الاشتراك حيث المنخرط كيساهم بشكل دوري باش ياخذ معاش من بعد,neu,claude-synth,True,definition
+synth_0189,synthetic,synthetic,arabe,clean,الجهوية المتقدمة كتعطي للجهات صلاحيات اوسع فتدبير الشؤون المحلية ديالها,neu,claude-synth,True,definition

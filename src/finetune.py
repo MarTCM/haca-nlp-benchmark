@@ -40,6 +40,7 @@ DATA_DIR        = os.path.join(os.path.dirname(__file__), "..", "data", "test_se
 RAW_DIR         = os.path.join(os.path.dirname(__file__), "..", "data", "raw")
 CKPT_DIR        = os.path.join(os.path.dirname(__file__), "..", "checkpoints")
 BROADCAST_TRAIN = os.path.join(DATA_DIR, "broadcast_train_raw.csv")
+HACA_TRAIN      = os.path.join(DATA_DIR, "haca_train_v3.csv")   # Stage 4 output (v3)
 os.makedirs(CKPT_DIR, exist_ok=True)
 
 LABEL2ID = {"neg": 0, "neu": 1, "pos": 2}
@@ -76,6 +77,86 @@ MODELS = {
         "epochs":            5,
         "batch_size":        8,
         "use_class_weights": True,
+    },
+    # ── Stage 5 (v3): HACA-Sent — MAC + cleaned/labelled SRT pool + synthetic ──
+    # Consumes data/test_sets/haca_train_v3.csv (build_haca_train.py).
+    # Class-weighted focal loss to fight the neu-dominant / pos-scarce imbalance.
+    "marbertv2-haca": {
+        "hub_id":            "UBC-NLP/MARBERTv2",
+        "train_lang":        "haca",
+        "eval_langs":        ["domaine_reel_v2", "darija_ar"],
+        "license_note":      "RESEARCH-ONLY — not for commercial use.",
+        "lr":                2e-5,
+        "epochs":            4,
+        "batch_size":        16,
+        "use_class_weights": True,
+        "focal_gamma":       2.0,
+        "pos_oversample":    3,      # repeat in-domain pos rows to amplify the rare class
+    },
+    # In-domain ONLY (no MAC) — the fix for the pos-collapse: class weights and pos
+    # examples both reflect broadcast content-valence. Continues from the MAC-trained
+    # checkpoint to keep general Darija, with a low LR.
+    "marbertv2-haca-only": {
+        "hub_id":            None,
+        "local_ckpt":        "checkpoints/marbertv2-haca",  # sharpen the model you already trained
+        "train_lang":        "haca-only",
+        "eval_langs":        ["domaine_reel_v2", "darija_ar"],
+        "license_note":      "RESEARCH-ONLY — not for commercial use.",
+        "lr":                1e-5,
+        "epochs":            6,
+        "batch_size":        16,
+        "use_class_weights": True,
+        "focal_gamma":       2.0,
+        "pos_oversample":    4,
+    },
+    # Same, but fresh from Hub (use if checkpoints/marbertv2 isn't available this session).
+    "marbertv2-haca-only-hub": {
+        "hub_id":            "UBC-NLP/MARBERTv2",
+        "train_lang":        "haca-only",
+        "eval_langs":        ["domaine_reel_v2", "darija_ar"],
+        "license_note":      "RESEARCH-ONLY — not for commercial use.",
+        "lr":                2e-5,
+        "epochs":            6,
+        "batch_size":        16,
+        "use_class_weights": True,
+        "focal_gamma":       2.0,
+        "pos_oversample":    4,
+    },
+    # ── French HACA-Sent — fine-tune a French encoder on hand-authored broadcast French ──
+    # Training pool: src/synthetic_haca_fr.py (no real French pool exists). Eval: the frozen
+    # real gold data/test_sets/francais_haca_gold.csv (run src/eval_francais_gold.py after).
+    # Two bases per the plan: CamemBERT (canonical French) and XLM-R (already 3-class).
+    "camembert-haca": {
+        "hub_id":            "almanach/camembert-base",
+        "train_lang":        "francais-haca",
+        "eval_langs":        [],
+        "lr":                2e-5,
+        "epochs":            4,          # ~4.5k rows now (was 8 for the 143-row set)
+        "batch_size":        16,
+        "use_class_weights": True,
+        "focal_gamma":       2.0,
+    },
+    "xlm-r-haca": {
+        "hub_id":            "cardiffnlp/twitter-xlm-roberta-base-sentiment",
+        "train_lang":        "francais-haca",
+        "eval_langs":        [],
+        "lr":                2e-5,
+        "epochs":            4,          # ~4.5k rows now (was 8 for the 143-row set)
+        "batch_size":        16,
+        "use_class_weights": True,
+        "focal_gamma":       2.0,
+    },
+    # Permissive-licence alternative for HACA production (DarijaBERT).
+    "darijabert-haca": {
+        "hub_id":            "SI2M-Lab/DarijaBERT",
+        "train_lang":        "haca",
+        "eval_langs":        ["domaine_reel_v2", "darija_ar"],
+        "lr":                2e-5,
+        "epochs":            4,
+        "batch_size":        16,
+        "use_class_weights": True,
+        "focal_gamma":       2.0,
+        "pos_oversample":    3,
     },
 }
 
@@ -192,6 +273,147 @@ def load_train_split_broadcast():
     return bc_tr.reset_index(drop=True), val_df.reset_index(drop=True)
 
 
+def load_train_split_haca(pos_oversample: int = 1):
+    """MAC training data + HACA-Sent v3 (cleaned SRT pool + synthetic), joint split.
+
+    HACA-Sent is already de-leaked against domaine_reel_v2 (build_haca_train.py); we
+    re-exclude by text as a belt-and-braces guard.  In-domain `pos` rows are optionally
+    repeated `pos_oversample` times in the TRAIN split to amplify the rare class.
+    """
+    import importlib, sys as _sys
+    _sys.path.insert(0, os.path.dirname(__file__))
+    bts = importlib.import_module("build_test_sets")
+    importlib.reload(bts)
+
+    mac_df  = bts.load_mac()
+    test_df = pd.read_csv(os.path.join(DATA_DIR, "darija_ar.csv"))
+    mac_df  = mac_df[~mac_df["text"].isin(set(test_df["text"]))].reset_index(drop=True)
+
+    if not os.path.exists(HACA_TRAIN):
+        raise FileNotFoundError(
+            f"HACA training data not found: {HACA_TRAIN}\n"
+            "Run:  python src/build_haca_train.py")
+    haca = pd.read_csv(HACA_TRAIN)
+    haca = haca[haca["label"].isin(LABEL2ID)][["text", "label"]].reset_index(drop=True)
+    frozen_v2 = pd.read_csv(os.path.join(DATA_DIR, "domaine_reel_v2.csv"))
+    haca = haca[~haca["text"].isin(set(frozen_v2["text"]))].reset_index(drop=True)
+
+    mac_tr, mac_va = train_test_split(mac_df, test_size=0.1, stratify=mac_df["label"], random_state=SEED)
+    hc_tr,  hc_va  = train_test_split(haca,   test_size=0.2, stratify=haca["label"],   random_state=SEED)
+
+    if pos_oversample and pos_oversample > 1:
+        extra = pd.concat([hc_tr[hc_tr["label"] == "pos"]] * (pos_oversample - 1), ignore_index=True)
+        hc_tr = pd.concat([hc_tr, extra], ignore_index=True)
+
+    train_df = pd.concat([mac_tr, hc_tr], ignore_index=True).sample(frac=1, random_state=SEED)
+    val_df   = pd.concat([mac_va, hc_va], ignore_index=True).sample(frac=1, random_state=SEED)
+
+    print(f"  haca train: {len(train_df)} (MAC={len(mac_tr)}, haca={len(hc_tr)} incl. x{pos_oversample} pos)")
+    print(f"  haca val  : {len(val_df)}   (MAC={len(mac_va)}, haca={len(hc_va)})")
+    print(f"  train dist: {dict(train_df['label'].value_counts())}")
+    return train_df.reset_index(drop=True), val_df.reset_index(drop=True)
+
+
+def load_train_split_haca_only(pos_oversample: int = 1):
+    """In-domain ONLY: HACA-Sent v3 broadcast data, no MAC in the training signal.
+
+    Removing MAC matters because MAC is 54% positive *emotional* tweets — mixing it in
+    (a) makes class weights treat `pos` as abundant and down-weight it, and (b) teaches the
+    wrong `pos` concept (emojis/praise) instead of broadcast content-valence (factual good
+    news).  Validation is augmented with a small MAC slice only for a stable macro-F1 signal.
+    """
+    import importlib, sys as _sys
+    _sys.path.insert(0, os.path.dirname(__file__))
+    bts = importlib.import_module("build_test_sets")
+    importlib.reload(bts)
+
+    haca = pd.read_csv(HACA_TRAIN)
+    haca = haca[haca["label"].isin(LABEL2ID)][["text", "label"]].reset_index(drop=True)
+    frozen_v2 = pd.read_csv(os.path.join(DATA_DIR, "domaine_reel_v2.csv"))
+    haca = haca[~haca["text"].isin(set(frozen_v2["text"]))].reset_index(drop=True)
+
+    hc_tr, hc_va = train_test_split(haca, test_size=0.2, stratify=haca["label"], random_state=SEED)
+    if pos_oversample and pos_oversample > 1:
+        extra = pd.concat([hc_tr[hc_tr["label"] == "pos"]] * (pos_oversample - 1), ignore_index=True)
+        hc_tr = pd.concat([hc_tr, extra], ignore_index=True)
+
+    mac_df  = bts.load_mac()
+    test_df = pd.read_csv(os.path.join(DATA_DIR, "darija_ar.csv"))
+    mac_df  = mac_df[~mac_df["text"].isin(set(test_df["text"]))].reset_index(drop=True)
+    _, mac_va = train_test_split(mac_df, test_size=0.1, stratify=mac_df["label"], random_state=SEED)
+
+    train_df = hc_tr.sample(frac=1, random_state=SEED)
+    val_df   = pd.concat([hc_va, mac_va], ignore_index=True).sample(frac=1, random_state=SEED)
+    print(f"  haca-only train: {len(train_df)} (incl. x{pos_oversample} pos)  val: {len(val_df)}")
+    print(f"  train dist: {dict(train_df['label'].value_counts())}")
+    return train_df.reset_index(drop=True), val_df.reset_index(drop=True)
+
+
+SYNTH_FR       = os.path.join(DATA_DIR, "synthetic_haca_fr.csv")        # 143 curated clean rows
+SYNTH_FR_LARGE = os.path.join(DATA_DIR, "synthetic_haca_fr_large.csv")  # thousands, templated + ASR-noised
+FR_GOLD        = os.path.join(DATA_DIR, "francais_haca_gold.csv")
+
+
+def load_train_split_haca_fr():
+    """French HACA-Sent: hand-authored synthetic French broadcast utterances only.
+
+    There is no real French training pool (the only real French SRT is the frozen gold), so
+    the synthetic set IS the training data. Uses the LARGE generated set (templated + ASR-noise
+    augmented, src/synthetic_haca_fr_large.py) when present, plus the 143 curated clean rows as
+    high-quality anchors. Stratified 80/20 split; the frozen gold is excluded by text (guard).
+    """
+    large   = pd.read_csv(SYNTH_FR_LARGE) if os.path.exists(SYNTH_FR_LARGE) else None
+    curated = pd.read_csv(SYNTH_FR)       if os.path.exists(SYNTH_FR)       else None
+    if large is None and curated is None:
+        raise FileNotFoundError(
+            "No French synthetic data found. Run:\n"
+            "  python src/synthetic_haca_fr_large.py   (and/or src/synthetic_haca_fr.py)")
+
+    gold_texts = set(pd.read_csv(FR_GOLD)["text"].astype(str)) if os.path.exists(FR_GOLD) else set()
+
+    # ── TEMPLATE-DISJOINT validation split ──────────────────────────────────────
+    # The large set is generated from templates; a random split would put near-identical
+    # sentences (same template, different slot fills) in both train and val → val macro-F1
+    # saturates at ~1.0 and best-epoch selection is meaningless. Instead we hold out whole
+    # TEMPLATES per class for validation, so val sentences use patterns unseen in training.
+    # The 143 curated clean rows have no template id and go entirely to train (anchors).
+    val_parts, train_parts = [], []
+    if large is not None and "template_id" in large.columns:
+        rng = np.random.RandomState(SEED)
+        for lab in LABEL2ID:
+            sub = large[large["label"] == lab]
+            tids = sorted(sub["template_id"].unique())
+            rng.shuffle(tids)
+            n_val = max(1, round(0.2 * len(tids)))
+            val_tids = set(tids[:n_val])
+            val_parts.append(sub[sub["template_id"].isin(val_tids)])
+            train_parts.append(sub[~sub["template_id"].isin(val_tids)])
+        if curated is not None:
+            train_parts.append(curated)
+        train_df = pd.concat(train_parts, ignore_index=True)[["text", "label"]]
+        val_df   = pd.concat(val_parts,   ignore_index=True)[["text", "label"]]
+        split = "template-disjoint"
+    else:
+        # fallback (curated only / no template ids): plain stratified split
+        df = pd.concat([f[["text", "label"]] for f in (large, curated) if f is not None],
+                       ignore_index=True)
+        df = df[df["label"].isin(LABEL2ID)].drop_duplicates("text").reset_index(drop=True)
+        train_df, val_df = train_test_split(df, test_size=0.2, stratify=df["label"],
+                                            random_state=SEED)
+        split = "stratified-random"
+
+    # dedup + de-leak against the gold (and ensure no train text leaks into val)
+    train_df = train_df[train_df["label"].isin(LABEL2ID)].drop_duplicates("text")
+    val_df   = val_df[val_df["label"].isin(LABEL2ID)].drop_duplicates("text")
+    train_df = train_df[~train_df["text"].isin(gold_texts)]
+    val_df   = val_df[~val_df["text"].isin(gold_texts) & ~val_df["text"].isin(set(train_df["text"]))]
+    train_df, val_df = train_df.reset_index(drop=True), val_df.reset_index(drop=True)
+
+    print(f"  francais-haca train: {len(train_df)}  val: {len(val_df)}  (split: {split})")
+    print(f"  train dist: {dict(train_df['label'].value_counts())}")
+    return train_df, val_df
+
+
 def compute_class_weights_tensor(train_df: pd.DataFrame) -> torch.Tensor:
     """Return a FloatTensor of class weights (inverse frequency, sklearn-style)."""
     labels = train_df["label"].map(LABEL2ID).values
@@ -201,19 +423,30 @@ def compute_class_weights_tensor(train_df: pd.DataFrame) -> torch.Tensor:
 
 
 class WeightedTrainer(Trainer):
-    """Trainer subclass that applies per-class weights to the cross-entropy loss."""
+    """Trainer with per-class-weighted cross-entropy, optionally focal (gamma>0).
 
-    def __init__(self, *args, class_weights: torch.Tensor | None = None, **kwargs):
+    Focal loss down-weights easy (well-classified) examples so the model focuses on the
+    hard minority classes — here the scarce broadcast `pos`/`neg`.
+    """
+
+    def __init__(self, *args, class_weights: torch.Tensor | None = None,
+                 focal_gamma: float = 0.0, **kwargs):
         super().__init__(*args, **kwargs)
         self._cw = class_weights
+        self._gamma = focal_gamma or 0.0
 
     def compute_loss(self, model, inputs, return_outputs=False, **kwargs):
         labels  = inputs.get("labels")
         outputs = model(**inputs)
-        if self._cw is not None and labels is not None:
+        if labels is not None and (self._cw is not None or self._gamma):
             logits = outputs.logits
-            weight = self._cw.to(logits.device, dtype=logits.dtype)
-            loss   = torch.nn.functional.cross_entropy(logits, labels, weight=weight)
+            weight = self._cw.to(logits.device, dtype=logits.dtype) if self._cw is not None else None
+            if self._gamma:
+                ce = torch.nn.functional.cross_entropy(logits, labels, weight=weight, reduction="none")
+                pt = torch.exp(-ce)
+                loss = ((1.0 - pt) ** self._gamma * ce).mean()
+            else:
+                loss = torch.nn.functional.cross_entropy(logits, labels, weight=weight)
         else:
             loss = outputs.loss
         return (loss, outputs) if return_outputs else loss
@@ -267,13 +500,22 @@ def finetune(model_key: str) -> None:
 
     # ── Load tokenizer ────────────────────────────────────────────────────────
     tok_source = local_ckpt if hub_id is None else hub_id
-    tokenizer  = AutoTokenizer.from_pretrained(tok_source)
+    try:
+        tokenizer = AutoTokenizer.from_pretrained(tok_source)
+    except Exception:   # CamemBERT fast tokenizer can fail on some tokenizers versions
+        tokenizer = AutoTokenizer.from_pretrained(tok_source, use_fast=False)
 
     # ── Load training data ────────────────────────────────────────────────────
     if train_lang == "mixed":
         train_df, val_df = load_train_split_mixed()
     elif train_lang == "broadcast":
         train_df, val_df = load_train_split_broadcast()
+    elif train_lang == "haca":
+        train_df, val_df = load_train_split_haca(cfg.get("pos_oversample", 1))
+    elif train_lang == "haca-only":
+        train_df, val_df = load_train_split_haca_only(cfg.get("pos_oversample", 1))
+    elif train_lang == "francais-haca":
+        train_df, val_df = load_train_split_haca_fr()
     else:
         train_df, val_df = load_train_split(train_lang)
     print(f"  train={len(train_df)}  val={len(val_df)}")
@@ -307,6 +549,8 @@ def finetune(model_key: str) -> None:
         fp16=torch.cuda.is_available(),
         eval_strategy="epoch",
         save_strategy="epoch",
+        save_total_limit=1,       # keep only the best checkpoint (avoids filling Kaggle disk)
+        save_only_model=True,     # don't persist optimizer/scheduler state (~2x model size)
         load_best_model_at_end=True,
         metric_for_best_model="macro_f1",
         greater_is_better=True,
@@ -325,6 +569,7 @@ def finetune(model_key: str) -> None:
     )
     if use_cw:
         trainer_kwargs["class_weights"] = cw_tensor
+        trainer_kwargs["focal_gamma"] = cfg.get("focal_gamma", 0.0)
 
     trainer = TrainerClass(**trainer_kwargs)
 
@@ -340,7 +585,10 @@ def finetune(model_key: str) -> None:
     from transformers import AutoTokenizer as _AutoTokenizer
     from label_maps import FINETUNED_MAP, apply_map
 
-    _tokenizer = _AutoTokenizer.from_pretrained(ckpt_path)
+    try:
+        _tokenizer = _AutoTokenizer.from_pretrained(ckpt_path)
+    except Exception:
+        _tokenizer = _AutoTokenizer.from_pretrained(ckpt_path, use_fast=False)
     _tokenizer.model_max_length = 512  # pipeline ignores max_length kwarg; patch tokenizer directly
 
     pipe = hf_pipeline(
