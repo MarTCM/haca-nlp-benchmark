@@ -3,7 +3,7 @@
   "lang": "domaine_reel_v2",
   "n": 194,
   "macro_f1": 0.4592,
-  "latency_ms_per_utt": 6.262,
+  "latency_ms_per_utt": 5.974,
   "peak_vram_mb": 2615.8,
   "n_params": 162843651,
   "classes_evaluated": [
@@ -66,6 +66,6 @@
     "neu",
     "pos"
   ],
-  "gpu_train_minutes": 17.5,
+  "gpu_train_minutes": 16.7,
   "checkpoint": "/kaggle/working/benchmark/src/../checkpoints/marbertv2-haca"
 }

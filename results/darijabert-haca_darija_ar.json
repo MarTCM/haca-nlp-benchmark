@@ -3,7 +3,7 @@
   "lang": "darija_ar",
   "n": 1000,
   "macro_f1": 0.7666,
-  "latency_ms_per_utt": 2.633,
+  "latency_ms_per_utt": 2.54,
   "peak_vram_mb": 2356.3,
   "n_params": 147483651,
   "classes_evaluated": [
@@ -66,6 +66,6 @@
     "neu",
     "pos"
   ],
-  "gpu_train_minutes": 16.6,
+  "gpu_train_minutes": 15.8,
   "checkpoint": "/kaggle/working/benchmark/src/../checkpoints/darijabert-haca"
 }
