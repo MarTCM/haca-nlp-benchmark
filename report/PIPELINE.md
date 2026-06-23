@@ -180,8 +180,21 @@ The dashboard detects the SRT language (`srt_utils.detect_lang`) and displays it
   simplest reproducible option. Also selectable: the HACA fine-tunes `xlm-r-haca` / `camembert-haca`,
   their `ensemble-fr`, and `distilcamembert` (5★ review model that collapses neutral). French
   verdicts remain less reliable than the Arabic checkpoints until real French data exists.
+- **API Cloud (Z.ai / OpenAI compatible)** — any LLM via a standard Chat Completions
+  endpoint (defaults to `glm-5.2` on `https://api.z.ai/api/paas/v4/chat/completions`).
+  All utterances are sent in a single batched request (saves tokens & avoids rate limits).
+  Requires an API key entered in the sidebar.
 
-The slider re-computes the verdict live.
+When API Cloud is the classifier the sidebar shows a **password input** for the API key,
+a **text input** for the endpoint URL (default Z.ai), a **text input** for the model name
+(default `glm-5.2`), and a **checkbox** *"Utiliser le même modèle pour le sujet"*.
+When checked, the API call also extracts the programme topic from a representative sample
+using the same model — saving a separate API call. The topic selectbox is **disabled**
+while the checkbox is active.
+
+The analysis is triggered by clicking the **"Lancer l'analyse"** button to avoid
+accidental API calls (and costs) when tweaking settings. Results persist while
+the SRT is loaded.
 
 It also shows the **subject** of the programme (`src/topic_detect.py`), with three backends so
 each verdict reads e.g. *"Sujet: Corruption · Verdict: NÉGATIF"*:

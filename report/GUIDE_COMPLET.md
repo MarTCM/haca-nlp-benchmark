@@ -190,9 +190,12 @@ caractères arabes :
   langue (checkpoint local **ou** modèle du Hub mis en cache). `pick_model_for_lang` choisit
   automatiquement : `arabe → marbertv2-haca`, `arabizi → darijabert-arabizi`,
   `francais → xlm-sentiment`.
-- **Tableau de bord** (`src/dashboard_app.py`, Streamlit) : on charge un SRT, il **détecte la
-  langue**, choisit le modèle (mode « Auto ») ou laisse l'utilisateur choisir, et affiche verdict
-  + timeline + CSV. Détaillé dans `PIPELINE.md` §4b.
+- **Tableau de bord** (`src/dashboard_app.py`, Streamlit) : on charge un SRT, on clique sur
+  « Lancer l'analyse », il **détecte la langue**, choisit le modèle (mode « Auto ») ou laisse
+  l'utilisateur choisir (dont **API Cloud** via clé, URL et modèle, par défaut `glm-5.2` sur
+  Z.ai), et affiche verdict + timeline + CSV. Quand l'API Cloud est sélectionnée, une case à
+  cocher permet d'**utiliser le même appel pour le sujet** (économie de tokens). Le bouton
+  évite les appels API accidentels. Détaillé dans `PIPELINE.md` §4b.
 
 **Le français — et la tentative de fine-tune.** Faute de modèle français entraîné sur du broadcast
 HACA, le défaut est `cardiffnlp/twitter-xlm-roberta-base-sentiment` (vrai 3 classes neg/neu/pos).
