@@ -38,7 +38,9 @@ It is *not* a per-utterance classifier — it aggregates, and it abstains on noi
 **Stage details**
 1. **Parse + segment.** Reuses the exact same segmentation as training: long YouTube-style
    paragraphs are window-split, short SRT cues are merged into ~sentence-length utterances.
-   Utterances shorter than 40 chars are dropped.
+   Utterances shorter than 40 chars are dropped. If the SRT is **diarized** (cues prefixed with
+   `[SPEAKER_XX]`), the speaker tag is stripped here so it never reaches the quality gate or the
+   classifier (see §4c for the per-speaker breakdown that uses those tags separately).
 2. **Quality gate** (`asr_quality.is_clean`). Scores each utterance on function-word density,
    length, script and repetition. The gate is **language-agnostic**: `func_ratio` counts both
    Arabic *and* French high-frequency function words, and `script_ratio` (Arabic + Latin letters
@@ -204,6 +206,41 @@ each verdict reads e.g. *"Sujet: Corruption · Verdict: NÉGATIF"*:
 - **Atlas-Chat-2B** — transformers 4-bit, **CUDA only** (slow/unavailable on integrated GPUs).
 
 If the LLM backend is unreachable the dashboard falls back to keywords with a warning.
+
+## 4c. Per-speaker tonality (diarized SRTs)
+When the SRT is **diarized** — each cue starts with a speaker tag like `[SPEAKER_00]`, as written
+by the transcription pipeline's WhisperX + pyannote path — the dashboard can break the tonality
+down **per speaker**. Tick **"Analyse par locuteur (SRT diarisé)"** in the sidebar before clicking
+*Lancer l'analyse*.
+
+How it works (mechanics):
+- `srt_utils.split_speaker()` parses a leading `[SPEAKER_XX]` tag off each cue and normalises it to
+  `SPEAKER_NN` (`[speaker 3]`, `[SPK-1]` → `SPEAKER_03`, `SPEAKER_01`). `srt_utils.is_diarized()`
+  flags the file as diarized when **≥ 50 %** of cues carry such a tag.
+- The tag is **stripped from the text before classification everywhere**, so it never pollutes the
+  sentiment model — this also fixes the whole-programme verdict on diarized files (previously the
+  `[SPEAKER_00]` tokens leaked into the classifier input).
+- `haca_pipeline.segment_srt_by_speaker()` groups cues by speaker, merging only **consecutive**
+  cues from the **same** speaker into utterances (so one speaker's words are never pooled with the
+  next person's), then applies the same quality gate.
+- `process_file(..., by_speaker=True)` classifies every speaker's clean utterances in **one batched
+  call** and runs the same `aggregate()` per speaker. The report then gains:
+  - `report["diarized"]` — bool;
+  - `report["speakers"]` — `{ "SPEAKER_00": {tone, tone_label, proportions, confidence, coverage,
+    n_clean, n_total, n_utterances, flag_review, review_reason}, … }`, sorted by clean-utterance
+    count.
+
+In the UI this renders as a **per-speaker comparison table** (verdict + neg/neu/pos + coverage +
+confidence per speaker), a **CSV download** (`tonalite_locuteurs_<file>.csv`), and a proportion bar
+per speaker. If the option is on but no `[SPEAKER_XX]` tags are found, the dashboard reports that
+the SRT isn't diarized. The programme- and segment-level verdicts are unchanged — per-speaker is
+purely additive.
+
+> Note: enabling this runs the classifier a second time over the per-speaker grouping (separate
+> from the programme pass) — negligible for local encoders, but it roughly **doubles token cost on
+> the API Cloud classifier**.
+
+---
 
 ## 5. Tuning the review behaviour
 Three constants at the top of `haca_pipeline.py` control how aggressive the abstention is:

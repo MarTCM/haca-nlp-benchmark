@@ -67,6 +67,17 @@ python src/haca_pipeline.py --srt-dir data/raw/srt --model marbertv2-haca \
 python src/haca_pipeline.py --srt-dir data/raw/srt --stub
 ```
 
+**Analyse par locuteur (SRT diarisé).** Si le SRT est **diarisé** — chaque cue commence par une
+étiquette `[SPEAKER_XX]`, comme produit par le pipeline de transcription (WhisperX + pyannote) —
+le tableau de bord peut donner la tonalité **par locuteur**. Cocher *« Analyse par locuteur (SRT
+diarisé) »* dans la barre latérale avant *« Lancer l'analyse »* : on obtient un tableau comparatif
+(verdict + neg/neu/pos + couverture + confiance pour chaque `SPEAKER_XX`), un export CSV et une
+barre de proportions par locuteur. L'étiquette de locuteur est retirée du texte avant la
+classification (donc le verdict global de l'émission est aussi corrigé sur les fichiers diarisés),
+et seuls les cues **consécutifs du même locuteur** sont fusionnés en énoncés. Détails techniques :
+`report/PIPELINE.md` §4c. Détection : un SRT est considéré diarisé si ≥ 50 % des cues portent une
+étiquette. Sans diarisation, l'option est sans effet (message d'information).
+
 ## 4. Sorties
 - **Console** : par fichier, tonalité dominante + proportions + confiance + couverture + une
   **timeline** par segment (`▲pos ■neu ▼neg ·àrevoir`).
