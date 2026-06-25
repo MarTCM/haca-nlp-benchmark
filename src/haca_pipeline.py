@@ -32,10 +32,10 @@ import sys
 from collections import Counter
 
 sys.path.insert(0, os.path.dirname(__file__))
-from srt_utils import detect_lang                      # noqa: E402
+from srt_utils import detect_lang, split_speaker, is_diarized   # noqa: E402
 from asr_quality import is_clean                       # noqa: E402
 from extract_utterances import load_file               # noqa: E402
-from build_haca_pool import utterances_for_file        # reuse the same segmentation  # noqa: E402
+from build_haca_pool import utterances_for_file, merge_cues   # reuse the same segmentation  # noqa: E402
 
 CLASSES = ["neg", "neu", "pos"]
 WINDOW = 12          # utterances per segment (sliding window, non-overlapping)
@@ -355,6 +355,11 @@ def shifted_argmax(proba: dict, thr: dict) -> str:
 def segment_srt(path: str):
     """Return list of dicts: {text, quality, clean(bool)} in reading order."""
     fmt, cues = load_file(path)
+    # Strip any diarization speaker tag ([SPEAKER_XX]) from each cue so it never
+    # reaches the segmentation or the classifier; per-speaker analysis handles the
+    # tags separately (see segment_srt_by_speaker).
+    for c in cues:
+        _, c["text"] = split_speaker(c.get("text", ""))
     utts = utterances_for_file(fmt, cues)
     rows = []
     for u in utts:
@@ -364,6 +369,45 @@ def segment_srt(path: str):
         clean, reason = is_clean(u)
         rows.append({"text": u, "clean": clean, "quality": "clean" if clean else "garbled"})
     return fmt, rows
+
+
+def segment_srt_by_speaker(path: str):
+    """Group utterances by diarization speaker.
+
+    Returns ``(fmt, diarized, by_speaker)`` where ``by_speaker`` maps each speaker
+    label (``SPEAKER_00`` …) to a list of rows ``{text, clean, quality}`` — the
+    same row shape as :func:`segment_srt`. Only *consecutive* cues from the same
+    speaker are merged into an utterance, so one speaker's words are never pooled
+    with the next person's. When the SRT is not diarized, ``diarized`` is ``False``
+    and ``by_speaker`` is empty.
+    """
+    fmt, cues = load_file(path)
+    diarized = is_diarized(cues)
+    if not diarized:
+        return fmt, False, {}
+
+    # (speaker, text) in reading order; untagged cues fall under "SPEAKER_NA".
+    tagged = []
+    for c in cues:
+        spk, txt = split_speaker(c.get("text", ""))
+        tagged.append((spk or "SPEAKER_NA", txt))
+
+    by_speaker: Dict[str, list] = {}
+    i = 0
+    while i < len(tagged):
+        spk = tagged[i][0]
+        run = []
+        while i < len(tagged) and tagged[i][0] == spk:
+            run.append(tagged[i][1])
+            i += 1
+        for u in merge_cues(run):
+            u = " ".join(str(u).split()).strip()
+            if len(u) < 40:
+                continue
+            clean, _ = is_clean(u)
+            by_speaker.setdefault(spk, []).append(
+                {"text": u, "clean": clean, "quality": "clean" if clean else "garbled"})
+    return fmt, True, by_speaker
 
 
 # ── aggregation ──────────────────────────────────────────────────────────────
@@ -400,7 +444,39 @@ def aggregate(rows, thr):
             "flag_review": bool(reasons), "review_reason": ";".join(reasons) or None}
 
 
-def process_file(path, predict_proba, thr):
+def _speaker_breakdown(path, predict_proba, thr):
+    """Per-speaker tonality for a diarized SRT.
+
+    Returns ``(diarized, speakers)`` where ``speakers`` maps each speaker to its
+    aggregate report (plus ``n_utterances``), sorted by clean-utterance count.
+    Every speaker's clean utterances are classified in a single batched call.
+    """
+    _, diarized, by_speaker = segment_srt_by_speaker(path)
+    if not diarized:
+        return False, {}
+
+    # Classify all speakers' clean utterances in one pass, then map back.
+    flat = [(spk, idx)
+            for spk, rows in by_speaker.items()
+            for idx, r in enumerate(rows) if r["clean"]]
+    if flat:
+        probas = predict_proba([by_speaker[spk][idx]["text"] for spk, idx in flat])
+        for (spk, idx), pr in zip(flat, probas):
+            r = by_speaker[spk][idx]
+            r["label"] = shifted_argmax(pr, thr)
+            r["conf"] = round(max(pr.values()), 3)
+
+    speakers = {}
+    for spk, rows in by_speaker.items():
+        agg = aggregate(rows, thr)
+        agg["n_utterances"] = len(rows)
+        speakers[spk] = agg
+    speakers = dict(sorted(speakers.items(),
+                           key=lambda kv: kv[1]["n_clean"], reverse=True))
+    return True, speakers
+
+
+def process_file(path, predict_proba, thr, by_speaker=False):
     fmt, rows = segment_srt(path)
     clean_texts = [r["text"] for r in rows if r["clean"]]
     if clean_texts:
@@ -420,8 +496,14 @@ def process_file(path, predict_proba, thr):
         agg["window"] = [i, i + len(seg_rows) - 1]
         segments.append(agg)
 
-    return {"file": os.path.basename(path), "fmt": fmt,
-            "programme": programme, "segments": segments}
+    report = {"file": os.path.basename(path), "fmt": fmt,
+              "programme": programme, "segments": segments}
+
+    if by_speaker:
+        report["diarized"], report["speakers"] = _speaker_breakdown(
+            path, predict_proba, thr)
+
+    return report
 
 
 def print_summary(rep):

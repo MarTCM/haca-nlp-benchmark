@@ -135,6 +135,10 @@ floor = st.sidebar.slider("Seuil non-neutre (sensibilité)", 0.05, 0.50, hp.NONN
                           help="Part minimale de négatif/positif pour basculer le verdict. "
                                "Plus bas = plus sensible.")
 window = st.sidebar.slider("Énoncés par segment", 5, 30, hp.WINDOW, 1)
+per_speaker = st.sidebar.checkbox(
+    "Analyse par locuteur (SRT diarisé)", value=False,
+    help="Si le SRT est diarisé (étiquettes « [SPEAKER_XX] » en début de cue), ajoute "
+         "une tonalité par locuteur. Sans diarisation, cette option est sans effet.")
 
 # ── header ───────────────────────────────────────────────────────────────────
 st.title("📺 Tableau de bord — Tonalité broadcast HACA")
@@ -177,7 +181,7 @@ try:
                 api_model, api_key, api_url, include_topic=include_topic)
         else:
             predict_proba, thr = get_classifier(resolved_model)
-        rep = hp.process_file(tmp, predict_proba, thr)
+        rep = hp.process_file(tmp, predict_proba, thr, by_speaker=per_speaker)
 
     if include_topic:
         topic = predict_proba.topic
@@ -276,3 +280,34 @@ st.dataframe(df, use_container_width=True, hide_index=True)
 st.download_button("⬇️ Télécharger le CSV (tableau de bord)",
                    df.to_csv(index=False).encode("utf-8"),
                    file_name=f"tonalite_{up.name}.csv", mime="text/csv")
+
+# ── per-speaker breakdown (diarized SRTs) ────────────────────────────────────
+speakers = rep.get("speakers") or {}
+if speakers:
+    st.subheader("🗣️ Tonalité par locuteur")
+    st.caption("Le SRT est diarisé : chaque locuteur est analysé séparément "
+               "(énoncés du même locuteur regroupés).")
+    srows = []
+    for spk, a in speakers.items():
+        pr = a["proportions"]
+        srows.append({"locuteur": spk, "verdict": LABEL_FR[a["tone"]],
+                      "neg": pr["neg"], "neu": pr["neu"], "pos": pr["pos"],
+                      "énoncés": a["n_clean"], "couverture": a["coverage"],
+                      "confiance": a["confidence"], "à_revoir": a["flag_review"]})
+    sdf = pd.DataFrame(srows)
+    st.dataframe(sdf, use_container_width=True, hide_index=True)
+    st.download_button("⬇️ Télécharger le CSV (par locuteur)",
+                       sdf.to_csv(index=False).encode("utf-8"),
+                       file_name=f"tonalite_locuteurs_{up.name}.csv", mime="text/csv")
+    for spk, a in speakers.items():
+        st.markdown(
+            f"**{spk}** — <span style='color:{COL[a['tone']]}'>{LABEL_FR[a['tone']]}</span> "
+            f"<span style='color:#888;font-size:0.8em'>({a['n_clean']}/{a['n_utterances']} "
+            f"énoncés intelligibles)</span>",
+            unsafe_allow_html=True)
+        if a["flag_review"]:
+            st.caption(f"⚠ à revoir — {a['review_reason']}")
+        st.pyplot(proportions_bar(a["proportions"]), use_container_width=True)
+elif per_speaker:
+    st.info("Aucune étiquette de locuteur « [SPEAKER_XX] » détectée — ce SRT n'est "
+            "pas diarisé, donc l'analyse par locuteur n'est pas disponible.")

@@ -10,11 +10,47 @@ SRT pipeline utilities.
 import html
 import re
 import unicodedata
-from typing import List, Dict, Tuple
+from typing import List, Dict, Optional, Tuple
 
 ARABIC_RE   = re.compile(r"[؀-ۿ]")
 ARABIZI_RE  = re.compile(r"\b\w*[379]\w*\b")  # digits 3/7/9 typical of Arabizi
 SENTENCE_END = re.compile(r"(?<=[.!?؟۔])\s+")
+
+# Diarized SRTs (WhisperX + pyannote, via the transcription pipeline) prefix each
+# cue's text with a speaker tag, e.g. ``[SPEAKER_00] ...``. Match that leading tag
+# (and close variants like ``[SPEAKER 0]`` / ``[SPK_1]``) so per-speaker analysis
+# can split it off; ordinary bracketed notes like ``[music]`` are deliberately not
+# matched.
+SPEAKER_RE = re.compile(r"^\s*\[\s*(SPEAKER|SPK|SPEAKER_ID|S)[\s_-]?(\d+)\s*\]\s*",
+                        re.IGNORECASE)
+
+
+def split_speaker(text: str) -> Tuple[Optional[str], str]:
+    """Split a leading diarization speaker tag from a cue's text.
+
+    Returns ``(speaker_label, remaining_text)``; ``(None, stripped_text)`` when
+    there is no speaker tag. The label is normalised to ``SPEAKER_<NN>`` form so
+    ``[SPEAKER_0]``, ``[speaker 0]`` and ``[SPK-0]`` all map to ``SPEAKER_00``.
+    """
+    text = text or ""
+    m = SPEAKER_RE.match(text)
+    if not m:
+        return None, text.strip()
+    label = f"SPEAKER_{int(m.group(2)):02d}"
+    return label, text[m.end():].strip()
+
+
+def is_diarized(cues: List[Dict], min_fraction: float = 0.50) -> bool:
+    """True if at least ``min_fraction`` of cues carry a ``[SPEAKER_XX]`` tag.
+
+    A genuinely diarized SRT (WhisperX + pyannote) tags nearly every cue, so the
+    0.5 default comfortably separates it from a plain SRT that happens to contain
+    a stray bracketed note.
+    """
+    if not cues:
+        return False
+    tagged = sum(1 for c in cues if split_speaker(c.get("text", ""))[0] is not None)
+    return tagged / len(cues) >= min_fraction
 
 _ENCODINGS = ("utf-8", "utf-8-sig", "cp1256", "latin-1")
 
